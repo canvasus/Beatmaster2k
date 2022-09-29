@@ -1,0 +1,34 @@
+#######################################
+# Syntax Coloring Map For BALibrary
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+BAAudioControlWM8731	KEYWORD1
+BAAudioControlWM8731master    KEYWORD1
+BASpiMemory             KEYWORD1
+BAGpio                  KEYWORD1
+BAAudioEffectDelayExternal	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+TGA_PRO_REVA	KEYWORD2
+TGA_PRO_REVB    KEYWORD2
+TGA_PRO_EXPAND_REV2    KEYWORD2
+SPI_MEM0_1M    KEYWORD2
+SPI_MEM0_4M    KEYWORD2
+SPI_MEM1_1M    KEYWORD2
+SPI_MEM1_4M    KEYWORD2
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+BAHardwareConfig KEYWORD1
+
+#######################################
+# Constants (LITERAL1)
+#######################################
