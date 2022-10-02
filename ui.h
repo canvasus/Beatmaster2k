@@ -4,7 +4,7 @@
 #include <Adafruit_SH110X.h>
 //#include <Encoder.h>
 //#include <Bounce.h>
-#include "audioFunctions.h"
+#include "audioFcns.h"
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64

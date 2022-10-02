@@ -1,4 +1,4 @@
-#include "audioFunctions.h"
+#include "audioFcns.h"
 #include "midiFunctions.h"
 //#include "ui.h"
 
@@ -11,19 +11,23 @@ void setup()
   AudioBackend.setupAudio();
   setupMidi();
   //setupUI();
+
+  
 }
 
 elapsedMillis debugTimer = 0;
 elapsedMillis uiTimer = 0;
+float notes[2] = {24, 36};
 
 void loop()
 {
   updateMidi();
-  if (uiTimer > 20)
+  if (debugTimer > 250)
   {
-    uiTimer = 0;
-    //Voices[0].triggerSideChain();
-    Serial.println(Voices[0].getSCdata());
-//    updateUI();
+    static uint8_t counter = 0;
+    debugTimer = 0;
+    Voices[0].noteOn(notes[counter], 0);
+    counter++;
+    if (counter > 1) counter = 0;
   }
 }

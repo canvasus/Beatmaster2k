@@ -139,7 +139,7 @@ void localKeysNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
 {
   //Serial.print("Local keys note OFF: ");
   //Serial.println(note, DEC);
-  //Voices[0].noteOff(note, velocity);
+  Voices[1].noteOff(note, velocity);
 }
 
 void deviceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
