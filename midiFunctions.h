@@ -7,6 +7,8 @@
 #include "voice.h"
 #include "ui.h"
 
+extern LaunchPad LP1;
+
 void setupMidi();
 void locateUsbComponents();
 void configureLocalKeys(uint8_t driverIndex);

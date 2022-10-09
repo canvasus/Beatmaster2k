@@ -26,6 +26,8 @@ audioBackend::audioBackend()
    
   _connect(_mainOutL, 0, _audioOutput1, 0);
   _connect(_mainOutR, 0, _audioOutput1, 1);
+  _connect(_mainOutL, 0, _audioOutput1, 2);
+  _connect(_mainOutR, 0, _audioOutput1, 3);
   
   _connect(_mainOutL, 0, _usbGainL, 0);
   _connect(_mainOutR, 0, _usbGainR, 0);
@@ -56,7 +58,6 @@ audioBackend::audioBackend()
 
 void audioBackend::_connect(AudioStream &source, unsigned char sourceOutput, AudioStream &destination, unsigned char destinationInput)
 {
-  //static uint16_t connectionIndex = 0;
   _patchCords[_internalConnectionIndex] = new AudioConnection(source, sourceOutput, destination , destinationInput);
   _internalConnectionIndex++;
   if (_internalConnectionIndex > NR_PATCHCORDS - 1)
@@ -72,8 +73,8 @@ void audioBackend::setupAudio()
   AudioMemory(128);
   codecControl1.setAddress(0x1A);
   codecControl2.setAddress(0x1B);
-  codecControl1.enable();
-  codecControl2.enable();
+  if (!codecControl1.enable()) Serial.println("Codec at 0x1A not responding");
+  if (!codecControl2.enable()) Serial.println("Codec at 0x1B not responding");
   //_sgtl5000.enable();
   //_sgtl5000.volume(_parameters.hpVolume);
   for (uint8_t voiceIndex = 0; voiceIndex < NR_VOICES; voiceIndex++)

@@ -49,7 +49,7 @@ void setupMidi()
 void locateUsbComponents()
 {
   bool LPassigned = false;
-  bool localKeysAssigned = false;
+  bool localKeysAssigned = true;
   uint8_t LP_index = 0;
   uint8_t localKeys_index = 0;
   Serial.println("Searching for usb components...");
@@ -65,11 +65,11 @@ void locateUsbComponents()
         Serial.print(": PID 0x");
         Serial.print(productId, HEX);
         Serial.printf(" %s\n", productName);
-        if (productId == 0x1111)
-        {
-          localKeys_index = index;
-          localKeysAssigned = true;
-        }
+        //if (productId == 0x1111 || productId == 0x76)
+        //{
+        //  localKeys_index = index;
+        //  localKeysAssigned = true;
+        //}
         if (productId == 0x113)
         {
           LP_index = index;
@@ -80,7 +80,7 @@ void locateUsbComponents()
     }
   }
   configureLaunchPad(LP_index);
-  configureLocalKeys(localKeys_index);
+  //configureLocalKeys(localKeys_index);
 }
 
 void configureLocalKeys(uint8_t driverIndex)

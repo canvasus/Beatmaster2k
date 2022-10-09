@@ -1,27 +1,27 @@
 #pragma once
 
-#include <Adafruit_GFX.h>
-#include <Adafruit_SH110X.h>
-//#include <Encoder.h>
-//#include <Bounce.h>
+#include <ILI9341_t3.h>
+#include <font_Arial.h> // from ILI9341_t3
+#define SCREEN_YRES 240
+#define SCREEN_XRES 320
+
+#define TFT_DC  9
+#define TFT_CS 10
+// MOSI=11, MISO=12, SCK=13
+
+#include <Encoder.h>
+#include <Bounce.h>
 #include "audioFcns.h"
 
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET     -1
-#define SCREEN_ADDRESS 0x3C
+#define ROT1_A 41   // GPIO_A17, J2 pin 7
+#define ROT1_B 40   // GPIO_A16, J2 pin 8
+#define ROT1_SW 2   // GPIO_D2, J2 pin 10
+                    // GND, J2 pin 9
 
-#define ROT1_A 5
-#define ROT1_B 2
-#define ROT1_SW 4
-
-#define ROT2_A 9
-#define ROT2_B 3
-#define ROT2_SW 22
-
-#define SW_A 1
-#define SW_B 15
-#define SW_C 14
+#define ROT2_A 3    // GPIO_D3, J2 pin 11
+#define ROT2_B 4    // GPIO_D4, J2 pin 13
+#define ROT2_SW 15  // GPIO_A1, J2 pin 14
+                    // GND, J2 pin 12
 
 #define Y_SCALER 1000
 

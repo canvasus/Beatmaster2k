@@ -22,6 +22,9 @@ struct voiceParameters
   float noise_level = 0.0;
   uint8_t osc1Waveform = WAVEFORM_BANDLIMIT_SAWTOOTH;
   uint8_t osc2Waveform = WAVEFORM_BANDLIMIT_SAWTOOTH;
+  float detune = 0.002;
+  int8_t osc1_transpose = 0;
+  int8_t osc2_transpose = 0;
   
   float ampEnvelope_attack = 0;
   float ampEnvelope_decay = 0;
@@ -34,9 +37,11 @@ struct voiceParameters
   float filterEnvelope_decay = 0;
   float filterEnvelope_sustain = 1.0;
   float filterEnvelope_release = 10.0;
-  float filterEnvelopeAmplitude = 0.0;
+  float filterEnvelopeAmplitude = 1.0;
 
-  float sideChainEnvelope_attack = 1;
+  float waveFolderGain = 0.10;
+
+  float sideChainEnvelope_attack = 0;
   float sideChainEnvelope_hold = 30;
   float sideChainEnvelope_decay = 100;
   float sideChainEnvelope_sustain = 0.0;
@@ -45,6 +50,8 @@ struct voiceParameters
   uint8_t sideChainSendChannel = 0;
   uint8_t sideChainReceiveChannel = 255;
   float sideChainLevel = 0.0;
+
+  
 };
 
 class voice
@@ -65,7 +72,7 @@ class voice
     AudioEffectEnvelope       _ampEnvelope;
     
     AudioSynthWaveformDc      _dcWaveFolder;
-    AudioEffectWaveFolder     _wavefolder;
+    AudioEffectWaveFolder     _waveFolder;
 
     AudioSynthWaveformDc      _dcSC;
     AudioEffectEnvelope       _scEnvelope;
@@ -87,5 +94,5 @@ class voice
     void noteOn(uint8_t note, uint8_t velocity);
     void noteOff(uint8_t note, uint8_t velocity);
     void triggerSideChain(uint8_t sourceChannel);
-    void setOscFrequency(float frequency);
+    void setOscFrequency(uint8_t note);
 };

@@ -46,6 +46,7 @@ voice::voice(uint8_t id)
   _connect(_dcFilter, 0, _filterEnvelope, 0);
   _connect(_filterEnvelope, 0, _filterModMixer, 1);
   _connect(_filterModMixer, 0, _filter, 1);
+  _filter.octaveControl(3);
   _dcFilter.amplitude(1.0);
   _filterModMixer.gain(0, 1.0 - _parameters.filterEnvelopeAmplitude);
   _filterModMixer.gain(1, _parameters.filterEnvelopeAmplitude);
@@ -54,15 +55,20 @@ voice::voice(uint8_t id)
   _filterEnvelope.sustain(_parameters.filterEnvelope_sustain);
   _filterEnvelope.release(_parameters.filterEnvelope_release);
 
-  // AMP envelope
+  // AMP ENVELOPE
   _connect(_filter, 0, _ampEnvelope, 0);
-  _connect(_ampEnvelope, 0, _scMultiplier, 1);
   _ampEnvelope.attack(_parameters.ampEnvelope_attack);
   _ampEnvelope.decay(_parameters.ampEnvelope_decay);
   _ampEnvelope.sustain(_parameters.ampEnvelope_sustain);
   _ampEnvelope.release(_parameters.ampEnvelope_release);
-  
+
+  // WAVE FOLDER
+   _connect(_ampEnvelope, 0, _waveFolder, 0);
+   _connect(_dcWaveFolder, 0, _waveFolder, 1);
+   _dcWaveFolder.amplitude(_parameters.waveFolderGain);
+    
   // SIDECHAIN
+  _connect(_waveFolder, 0, _scMultiplier, 1);
   _connect(_dcSC, 0, _scEnvelope, 0);
   _connect(_scEnvelope, 0, _scMixer, 0);
   _connect(_dcSC, 0, _scMixer, 1);
@@ -81,11 +87,18 @@ voice::voice(uint8_t id)
     _generatorMixer.gain(0, 0); // sample
     _generatorMixer.gain(1, 0.8); // osc 1
     _generatorMixer.gain(2, 0.8); // osc 2
+    _generatorMixer.gain(3, 0.1); // noise
     _parameters.sideChainReceiveChannel = 1;
     _parameters.sideChainLevel = 0.85;
-    _ampEnvelope.attack(1);
-    _ampEnvelope.decay(100);
-    _ampEnvelope.sustain(0.5);
+    _filter.frequency(150);
+    _filter.resonance(2.0);
+    _filterEnvelope.attack(0);
+    _filterEnvelope.decay(200);
+    _filterEnvelope.sustain(0.2);
+    _filterEnvelope.release(300);
+    _ampEnvelope.attack(0);
+    _ampEnvelope.decay(200);
+    _ampEnvelope.sustain(0.4);
     _ampEnvelope.release(200.0);
   }
  
@@ -95,7 +108,7 @@ voice::voice(uint8_t id)
 void voice::noteOn(uint8_t note, uint8_t velocity)
 {
   if (_sample != nullptr) _player.play(_sample);
-  setOscFrequency(NOTEFREQS[note]);
+  setOscFrequency(note);
   _ampEnvelope.noteOn();
   _filterEnvelope.noteOn();
 }
@@ -106,10 +119,12 @@ void voice::noteOff(uint8_t note, uint8_t velocity)
   _filterEnvelope.noteOff();
 }
 
-void voice::setOscFrequency(float frequency)
+void voice::setOscFrequency(uint8_t note)
 {
-  _osc1.frequency(frequency);
-  _osc2.frequency(frequency * 1.004);
+  uint8_t osc1_baseFreq = NOTEFREQS[constrain(note + _parameters.osc1_transpose, 0, 127)];
+  uint8_t osc2_baseFreq = NOTEFREQS[constrain(note + _parameters.osc2_transpose, 0, 127)];
+  _osc1.frequency(osc1_baseFreq * pow(2, -_parameters.detune));
+  _osc2.frequency(osc2_baseFreq * pow(2, _parameters.detune));
 }
 
 void voice::triggerSideChain(uint8_t sourceChannel)

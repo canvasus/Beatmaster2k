@@ -4,9 +4,7 @@
 #include "voice.h"
 #include "src/effect_ensemble.h"
 #include "src/effect_platervbstereo.h"
-#include "src/BAAudioControlWM8731.h"
-
-using namespace BALibrary;
+#include "src/SM2k_control_wm8731.h"
 
 #define NR_PATCHCORDS 32
 
@@ -15,17 +13,17 @@ extern voice Voices[NR_VOICES];
 struct audioParameters
 {
   float hpVolume = 0.70;
-  float voiceMixerGain = 0.25;
-  float usbGain = 1.2;
+  float voiceMixerGain = 0.5;
+  float usbGain = 2.0;
   float chorusSendGain = 1.0;
 
   float mainOut_dry = 1.0;
-  float mainOut_chorus = 0.0;
-  float mainOut_reverb = 0.0;
+  float mainOut_chorus = 0.5;
+  float mainOut_reverb = 0.3;
   
-  float chorus_lfoRate = 6.0;
+  float chorus_lfoRate = 2.0;
 
-  float reverb_size = 0.75;
+  float reverb_size = 0.50;
   float reverb_hidamp = 0.5;
   float reverb_lodamp = 0.1;
   float reverb_lowpass = 0.4;
@@ -36,7 +34,7 @@ struct audioParameters
 class audioBackend
 {
   private:
-    AudioOutputI2S       _audioOutput1;
+    AudioOutputI2SQuad   _audioOutput1;
     AudioOutputUSB       _audioOutputUSB;
     AudioConnection  *   _patchCords[NR_PATCHCORDS];
     AudioMixer4          _voiceMixers[3]; // for 8 voices
@@ -54,8 +52,8 @@ class audioBackend
     AudioAmplifier       _usbGainR;
       
     //AudioControlSGTL5000 _sgtl5000;
-    BAAudioControlWM8731 codecControl1;
-    BAAudioControlWM8731 codecControl2;
+    SM2k_AudioControlWM8731 codecControl1;
+    SM2k_AudioControlWM8731 codecControl2;
     audioParameters      _parameters;
     uint16_t              _internalConnectionIndex;
     void _connect(AudioStream &source, unsigned char sourceOutput, AudioStream &destination, unsigned char destinationInput);
