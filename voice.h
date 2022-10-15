@@ -96,3 +96,5 @@ class voice
     void triggerSideChain(uint8_t sourceChannel);
     void setOscFrequency(uint8_t note);
 };
+
+String getOscEnum(uint8_t value);

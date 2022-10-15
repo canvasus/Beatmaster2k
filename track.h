@@ -45,7 +45,7 @@ struct pattern {
 
 typedef struct pattern Pattern;
 
-typedef void (*MIDIcallback) (uint8_t channel, uint8_t noteValue, uint8_t velocity);
+typedef void (*MIDIcallback)(uint8_t channel, uint8_t note, uint8_t velocity);
 
 class Track {
   
@@ -77,12 +77,13 @@ class Track {
     void          _auditEvent(trackEvent event);
     
   public:
-    Track(uint8_t trackId, uint8_t trackColor);
+    Track(uint8_t trackId, String trackName, uint8_t trackColor);
+    String        name;
+    uint8_t       outputId;
     uint8_t       color;
     int           transpose;
     uint8_t       lowerRow;
-    
-    
+   
     uint8_t       getId();
     uint16_t      getEventTick(uint8_t eventId);
     uint16_t      getCurrentTrackTick();

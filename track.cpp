@@ -1,13 +1,18 @@
 #include "track.h"
+#include "midiFunctions.h"
 
-Track::Track(uint8_t trackId, uint8_t trackColor)
+Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
 {
   // constructor code here
+    name                  = trackName;
    _trackId               = trackId;
    _nrEvents              = NR_TRACK_EVENTS;
    _cuedEventIndex        = 0;
-   _midiChannel           = 1;
-   _defaultNoteLengthTicks = 4 ; //(4 / 96 = <1/16)
+   _midiChannel           = trackId;
+   _defaultNoteLengthTicks = 8 ; //(4 / 96 = <1/16)
+   _noteOn_cb = nullptr;
+   _noteOff_cb = nullptr;
+   outputId = 0;
 
    for (int patternId = 0; patternId < NR_PATTERNS; patternId++)
    {
@@ -32,7 +37,7 @@ Track::Track(uint8_t trackId, uint8_t trackColor)
 
 uint8_t Track::getId() { return _trackId; }
 
-void Track::tickTrack() // sent from main sequencer at defined tick rate (100 ticks per beat typically)
+void Track::tickTrack() // sent from main sequencer at defined tick rate
 {
   _currentTrackTick = _currentTrackTick + 1;
   if (_currentTrackTick > _patterns[_currentPattern].patternLengthTicks) //_trackLengthTicks
@@ -67,6 +72,7 @@ void Track::_triggerEvents()
     if(_patterns[_currentPattern].trackEvents[index].header == EVENT_MIDI_SLEEPING) _patterns[_currentPattern].trackEvents[index].header = EVENT_MIDI_PLAYED;
     if(_noteOn_cb &&  (_patterns[_currentPattern].trackEvents[index].noteValue + transpose < 128))
     {
+      //Serial.println("called midicb");
       _noteOn_cb(_midiChannel, _patterns[_currentPattern].trackEvents[index].noteValue + transpose, _patterns[_currentPattern].trackEvents[index].noteVelocity);
       _copyToPlayedBuffer(_patterns[_currentPattern].trackEvents[index]);
     }
@@ -147,7 +153,7 @@ void Track::addEvent(uint16_t tick, uint8_t noteValue, uint8_t noteVelocity, uin
   if(audit) _auditEvent(_patterns[_currentPattern].trackEvents[_nextFreeEventId]);
   if (tick < _currentTrackTick) _updateCuedEventIndex();
   _compactEventArray();
-  //printEventArray(16);
+  printEventArray(16);
 
 }
 

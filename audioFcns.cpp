@@ -117,6 +117,8 @@ void audioBackend::setReverbLevel(float level)
   _mainOutR.gain(2, _parameters.mainOut_reverb);
 }
 
+// HELPER FUNCTIONS FOR UI
+// **************************
 void setDryLevel(float level) { AudioBackend.setDryLevel(level); }
 void setChorusLevel(float level) { AudioBackend.setChorusLevel(level); }
 void setReverbLevel(float level) { AudioBackend.setReverbLevel(level); }

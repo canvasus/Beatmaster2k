@@ -1,5 +1,6 @@
 #include "midiFunctions.h"
 #include "track.h"
+#include "sequencer.h"
 
 USBHost myusb;
 USBHub hub1(myusb);
@@ -18,15 +19,14 @@ MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
 const float DIV127 = (1.0/127.0);
 
-Track drumTrack1(1, LP_BLUE);
-Track drumTrack2(2, LP_CYAN);
-Track midiTrack1(3, LP_PURPLE);
-Track midiTrack2(4, LP_PINK);
-Track midiTrack3(5, LP_ORANGE);
+Track track0(0, "T0", LP_BLUE);
+Track track1(1, "T1", LP_CYAN);
+Track track2(2, "T2", LP_PURPLE);
+Track track3(3, "T3", LP_PINK);
+Track track4(4, "T4", LP_ORANGE);
 const uint8_t nrTracks = 5;
 
-Track *tracks[nrTracks] = {&drumTrack1, &drumTrack2, &midiTrack1, &midiTrack2, &midiTrack3};
-String trackNames[nrTracks] = {"D1", "D2", "M1", "M2", "M3"};
+Track *tracks[nrTracks] = {&track0, &track1, &track2, &track3, &track4};
 
 voice Voices[] = {voice(0), voice(1), voice(2), voice(3), voice(4), voice(5), voice(6), voice(7)};
 
@@ -44,6 +44,9 @@ void setupMidi()
   MIDI.setHandleNoteOff(deviceNoteOff);
   //MIDI.setHandleControlChange(myControlChange);
   locateUsbComponents();
+  LPinit();
+
+
 }
 
 void locateUsbComponents()
@@ -112,14 +115,14 @@ void configureLaunchPad(uint8_t driverIndex)
       LP1.begin(&midi1);
       midi1.setHandleNoteOn(LPNoteOn);
       midi1.setHandleNoteOff(LPNoteOff);  
-      midi1.setHandleControlChange(myControlChange);
+      midi1.setHandleControlChange(LPControlChange);
       Serial.println("Initializing LP @ port midi1");
       break;
     case 1: // midi2
       LP1.begin(&midi2);
       midi2.setHandleNoteOn(LPNoteOn);
       midi2.setHandleNoteOff(LPNoteOff);  
-      midi2.setHandleControlChange(myControlChange);
+      midi2.setHandleControlChange(LPControlChange);
       Serial.println("Initializing LP @ port midi2");
       break;
   }
@@ -156,6 +159,29 @@ void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
 
 }
 
+void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
+{
+  Voices[channel].noteOn(note, velocity);
+  //Serial.printf("voice0NoteOn ch %d note %d\n", channel, note);
+}
+
+void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
+{
+  Voices[channel].noteOff(note, velocity);
+  //Serial.printf("voice0NoteOff ch %d note %d\n", channel, note);
+}
+
+void serialMidiNoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity)
+{
+  MIDI.sendNoteOn(noteValue, 127, channel);
+}
+
+void serialMidiNoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity)
+{
+  MIDI.sendNoteOff(noteValue, 127, channel);
+}
+
+
 void myControlChange(byte channel, byte control, byte value)
 {
   switch (control)
@@ -176,40 +202,35 @@ void updateMidi()
 
 void LPNoteOn(byte channel, byte note, byte velocity)
 {
-//  if (displayMode == DISPLAYMODE_SEQUENCER)
-//  {
-//     if (velocity > 0) // Launchpad Mini sends velocity 127 at note on and 0 at off
-//    {
-//      uint8_t padColumn = LPnoteToPadColumn(note) + padPage * 8;
-//      uint8_t padRow = LPnoteToPadRow(note);
-//      uint8_t padState = 0;
-//      uint16_t tickTemp = padColumn * ticksPerColumn;
+  //Serial.print("LP note ON: ");
+  //Serial.println(note, DEC);
+  
+  if (LPdisplayMode == DISPLAYMODE_SEQUENCER)
+  {
+     if (velocity > 0) // Launchpad Mini sends velocity 127 at note on and 0 at off
+    {
+      uint8_t ticksPerColumn =  24 / LP1.xZoomLevel;
+      uint8_t lowerRow = tracks[currentTrack]->lowerRow;
+      uint8_t padColumn = LPnoteToPadColumn(note) + LP1.page * 8;
+      uint8_t padRow = LPnoteToPadRow(note);
+      uint8_t padState = 0;
+      uint16_t tickTemp = padColumn * ticksPerColumn;
+      bool auditTrack = true; //sequencerState == STATE_STOPPED;
+
+      if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + ticksPerColumn - 1 , lowerRow + padRow) == 0) // no matching events
+      {
+        tracks[currentTrack]->addEvent(tickTemp, lowerRow + padRow, 0, tracks[currentTrack]->getTrackDefaultNoteLengthTicks(), auditTrack);
+        padState = tracks[currentTrack]->color;
+      }
+      else
+      {
+        tracks[currentTrack]->removeEvents(tickTemp, tickTemp + ticksPerColumn -1, lowerRow + padRow);
+        padState = LP_OFF;
+      }
+      LP1.setPadColor(note, padState);
+    }
+  } // end, if DISPLAYMODE_SEQUENCER
 //
-//      if (currentTrack->getEventsInTickInterval(tickTemp, tickTemp + ticksPerColumn - 1 , lowerRow + padRow) == 0) // no matching events
-//      {
-//        currentTrack->addEvent(tickTemp, lowerRow + padRow, 0, currentTrack->getTrackDefaultNoteLengthTicks(), (sequencerState == STATE_STOPPED));
-//        padState = currentTrack->color;
-//      }
-//      else
-//      {
-//        currentTrack->removeEvents(tickTemp, tickTemp + ticksPerColumn -1, lowerRow + padRow);
-//        padState = LP_OFF;
-//      }
-//      LP1.setPadColor(note, padState);
-//    }
-//  } // end, if DISPLAYMODE_SEQUENCER
-//
-//  if (displayMode == DISPLAYMODE_MIXER)
-//  {
-//    if (velocity > 0)
-//    {
-//      uint8_t padColumn = LPnoteToPadColumn(note);
-//      uint8_t padRow = LPnoteToPadRow(note);
-//      float mixerValue = mapMixerUint8ToFloat(padColumn);
-//      mixerMatrixDrum1[padRow] = mixerValue;
-//      renderMixerPage();
-//    }
-//  }
 //  if (displayMode == DISPLAYMODE_PATTERNSELECT)
 //  {
 //    bool inPatternRange =  (velocity > 0 && note >= 21 && note <= 68); // in pattern range
@@ -276,7 +297,9 @@ void LPNoteOn(byte channel, byte note, byte velocity)
 
 void LPNoteOff(byte channel, byte note, byte velocity)
 {
-//  if (displayMode == DISPLAYMODE_PATTERNSELECT)
+  //Serial.print("LP note OFF: ");
+  //Serial.println(note, DEC);
+//  if (LPdisplayMode == DISPLAYMODE_PATTERNSELECT)
 //  {
 //    switch (note)
 //    {
@@ -295,4 +318,72 @@ void LPNoteOff(byte channel, byte note, byte velocity)
 //        break;
 //    }
 //  }
+}
+
+void LPControlChange(byte channel, byte control, byte value)
+{
+  //Serial.printf("LP CC: %d, %d\n", control, value);
+  if (value > 0)
+  {
+    switch (control)
+    {
+      case CCtrack1:
+      case CCtrack2:
+      case CCtrack3:
+      case CCtrack4:
+      case CCtrack5:
+        currentTrack = (control - 9) / 10 - 2;
+         break;
+      case CCstartStop:
+        // toggle sequencer state stopped/running
+        if (sequencerState == STATE_STOPPED)
+        {
+          startSequencer();
+          LP1.setPadColor(CCstartStop, LP_GREEN);
+        }
+        else
+        {
+          stopSequencer();
+          LP1.setPadColor(CCstartStop, LP_RED);
+        }
+        break;
+      case CCscrollUp:
+        LP1.setPadColor(CCscrollUp, LP_GREEN);
+        LPscrollUp();
+        break;
+      case CCscrollDown:
+        LP1.setPadColor(CCscrollDown, LP_GREEN);
+        LPscrollDown();
+        break;
+      case CCpageDecrease:
+        LP1.setPadColor(CCpageDecrease, LP_GREEN);
+        LPpageDecrease();
+        break;
+      case CCpageIncrease:
+        LP1.setPadColor(CCpageIncrease, LP_GREEN);
+        LPpageIncrease();
+        break;
+      case CCeditMode:
+        // toggle pattern edit / event edit
+        break;
+    }
+  }
+  if (value == 0)
+  {
+     switch (control)
+    {
+      case CCscrollUp:
+        LP1.setPadColor(CCscrollUp, LP_OFF);
+        break;
+      case CCscrollDown:
+        LP1.setPadColor(CCscrollDown, LP_OFF);
+        break;
+      case CCpageDecrease:
+        LP1.setPadColor(CCpageDecrease, LP_OFF);
+         break;
+      case CCpageIncrease:
+        LP1.setPadColor(CCpageIncrease, LP_OFF);
+         break;
+    }
+  }
 }

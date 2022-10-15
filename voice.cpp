@@ -89,7 +89,7 @@ voice::voice(uint8_t id)
     _generatorMixer.gain(2, 0.8); // osc 2
     _generatorMixer.gain(3, 0.1); // noise
     _parameters.sideChainReceiveChannel = 1;
-    _parameters.sideChainLevel = 0.85;
+    _parameters.sideChainLevel = 0.0;
     _filter.frequency(150);
     _filter.resonance(2.0);
     _filterEnvelope.attack(0);
@@ -147,4 +147,13 @@ void voice::connectToMixer(AudioMixer4 & targetMixer, uint8_t targetMixerPortInd
 {
   delete _outputConnection[_outputConnectionIndex];
   _outputConnection[_outputConnectionIndex] = new AudioConnection(_voiceOutput, 0, targetMixer, targetMixerPortIndex);
+}
+
+String getOscEnum(uint8_t value)
+{
+   if (value == 0) return "SINE"; // 0
+   if (value == 1) return "SAW"; // 1
+   if (value == 2) return "PULSE"; // 2
+   if (value == 3) return "ARBITR"; // 3
+   else return "ERR";
 }

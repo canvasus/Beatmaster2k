@@ -91,7 +91,7 @@ bool SM2k_AudioControlWM8731::enable(void)
 bool SM2k_AudioControlWM8731::write(unsigned int reg, unsigned int val)
 {
 	int attempt=0;
-	Serial.printf("WM8731 %d, reg %d, val %d: ", i2c_address, reg, val);
+	//Serial.printf("WM8731 %d, reg %d, val %d: ", i2c_address, reg, val);
 	while (1) {
 		attempt++;
 		//Wire.beginTransmission(WM8731_I2C_ADDR);
@@ -100,7 +100,7 @@ bool SM2k_AudioControlWM8731::write(unsigned int reg, unsigned int val)
 		Wire.write(val & 0xFF);
 		int status = Wire.endTransmission();
 		if (status == 0) {
-			Serial.printf("write ok, %d tries\n", attempt);
+			//Serial.printf("write ok, %d tries\n", attempt);
 			return true;
 		}
 		if (attempt >= 12) {

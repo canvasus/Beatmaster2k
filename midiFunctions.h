@@ -20,8 +20,14 @@ void localKeysNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 void myControlChange(uint8_t channel, uint8_t control, uint8_t value);
 
+void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
+void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
+void serialMidiNoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void serialMidiNoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+
 void LPNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void LPNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
+void LPControlChange(byte channel, byte control, byte value);
 
 #define CC_MODWHEEL 1
 
@@ -30,22 +36,22 @@ void LPNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 // Right side pads (19 lowest)
 #define   hostBpmIncrease 89
 #define   hostBpmDecrease 79
-#define   CCmidiTrack3    69
-#define   CCmidiTrack2    59
-#define   CCmidiTrack1    49
-#define   CCdrumTrack2    39
-#define   CCdrumTrack1    29
-#define   hostStartStop   19
+#define   CCtrack5        69
+#define   CCtrack4        59
+#define   CCtrack3        49
+#define   CCtrack2        39
+#define   CCtrack1        29
+#define   CCstartStop     19
 
 // Top pads (91 is rightmost)
 #define   CCscrollUp       91
 #define   CCscrollDown     92
-#define   hostPageDecrease 93
-#define   hostPageIncrease 94
+#define   CCpageDecrease   93
+#define   CCpageIncrease   94
 #define   CCpatternSelect  95
 #define   TBD96            96
 #define   TBD97            97
-#define   mixerMatrix      98
+#define   CCeditMode       98
 
 // Pads for pattern mode
 #define   notePatternClear  11

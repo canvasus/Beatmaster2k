@@ -71,6 +71,8 @@ class audioBackend
 
 extern audioBackend AudioBackend;
 
+// HELPER FUNCTIONS FOR UI
+// **************************
 void setDryLevel(float level);
 void setChorusLevel(float level);
 void setReverbLevel(float level);

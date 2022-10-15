@@ -23,6 +23,9 @@ class LaunchPad {
   public:
     LaunchPad(uint8_t LP_id);
     bool shift;
+    uint8_t page;
+    uint8_t xZoomLevel;
+    uint8_t yScrollStep;
     void begin(MIDIDevice_BigBuffer *midiDevice);
     void setProgrammerMode();
     void setPadColor(uint8_t pad, uint8_t color);
