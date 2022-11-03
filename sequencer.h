@@ -4,9 +4,16 @@
 #define STATE_STOPPED 0
 #define STATE_RUNNING 1
 
+#define MODE_PATTERNEDIT 0
+#define MODE_EVENTEDIT  1
+
 #define NR_TRACKS 5
 
+#define ticksPerBeat 24         // 1/4 * 1/24 = 1/96th resolution
+
 extern uint8_t sequencerState;
+extern uint8_t sequencerEditMode;
+
 void initSequencer();
 void updateSequencer();
 

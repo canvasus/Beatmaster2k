@@ -153,7 +153,7 @@ void Track::addEvent(uint16_t tick, uint8_t noteValue, uint8_t noteVelocity, uin
   if(audit) _auditEvent(_patterns[_currentPattern].trackEvents[_nextFreeEventId]);
   if (tick < _currentTrackTick) _updateCuedEventIndex();
   _compactEventArray();
-  printEventArray(16);
+  //printEventArray(16);
 
 }
 

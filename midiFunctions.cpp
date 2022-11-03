@@ -1,6 +1,6 @@
 #include "midiFunctions.h"
-#include "track.h"
-#include "sequencer.h"
+//#include "track.h"
+//#include "sequencer.h"
 
 USBHost myusb;
 USBHub hub1(myusb);
@@ -33,15 +33,16 @@ voice Voices[] = {voice(0), voice(1), voice(2), voice(3), voice(4), voice(5), vo
 void setupMidi()
 {
   Serial.println("MIDI SETUP");
+  delay(1000);
   myusb.begin();
   delay(100);
   
-  usbMIDI.setHandleNoteOn(deviceNoteOn);
-  usbMIDI.setHandleNoteOff(deviceNoteOff);
+  //usbMIDI.setHandleNoteOn(deviceNoteOn);
+  //usbMIDI.setHandleNoteOff(deviceNoteOff);
   //usbMIDI.setHandleControlChange(myControlChange);
   MIDI.begin(MIDI_CHANNEL_OMNI);
-  MIDI.setHandleNoteOn(deviceNoteOn);
-  MIDI.setHandleNoteOff(deviceNoteOff);
+  //MIDI.setHandleNoteOn(deviceNoteOn);
+  //MIDI.setHandleNoteOff(deviceNoteOff);
   //MIDI.setHandleControlChange(myControlChange);
   locateUsbComponents();
   LPinit();
@@ -147,16 +148,17 @@ void localKeysNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
 
 void deviceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
 {
-  //Serial.print("Note ON: ");
-  //Serial.println(note, DEC);
-
+  Serial.print("Device send note ON: ");
+  Serial.println(note, DEC);
+  //usbMIDI.sendNoteOn(note, velocity, channel);
+  
 }
 
 void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
 {
-  //Serial.print("Note OFF: ");
-  //Serial.println(note, DEC);
-
+  Serial.print("Device send note OFF: ");
+  Serial.println(note, DEC);
+  //usbMIDI.sendNoteOff(note, velocity, channel);
 }
 
 void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
@@ -205,7 +207,7 @@ void LPNoteOn(byte channel, byte note, byte velocity)
   //Serial.print("LP note ON: ");
   //Serial.println(note, DEC);
   
-  if (LPdisplayMode == DISPLAYMODE_SEQUENCER)
+  if ( ( LPdisplayMode == DISPLAYMODE_SEQUENCER ) && ( sequencerEditMode == MODE_PATTERNEDIT ) )
   {
      if (velocity > 0) // Launchpad Mini sends velocity 127 at note on and 0 at off
     {
@@ -230,6 +232,9 @@ void LPNoteOn(byte channel, byte note, byte velocity)
       LP1.setPadColor(note, padState);
     }
   } // end, if DISPLAYMODE_SEQUENCER
+
+
+  
 //
 //  if (displayMode == DISPLAYMODE_PATTERNSELECT)
 //  {
@@ -340,6 +345,7 @@ void LPControlChange(byte channel, byte control, byte value)
         {
           startSequencer();
           LP1.setPadColor(CCstartStop, LP_GREEN);
+          LPsetPageFromTrackData();
         }
         else
         {
@@ -365,6 +371,17 @@ void LPControlChange(byte channel, byte control, byte value)
         break;
       case CCeditMode:
         // toggle pattern edit / event edit
+        if (sequencerEditMode == MODE_PATTERNEDIT)
+        {
+          LP1.setPadColor(CCeditMode, LP_BLUE);
+          sequencerEditMode = MODE_EVENTEDIT;
+        }
+        else
+        {
+          LP1.setPadColor(CCeditMode, LP_RED);
+          sequencerEditMode = MODE_PATTERNEDIT;
+        }
+
         break;
     }
   }

@@ -6,6 +6,7 @@
 #include "track.h"
 #include "voice.h"
 #include "ui.h"
+#include "sequencer.h"
 
 extern LaunchPad LP1;
 

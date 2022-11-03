@@ -34,7 +34,7 @@ voice::voice(uint8_t id)
   _connect(_osc2, 0, _generatorMixer, 2);
   _connect(_noise, 0, _generatorMixer, 3);
   _osc1.begin(1.0, 40.0, WAVEFORM_BANDLIMIT_SAWTOOTH);
-  _osc2.begin(1.0, 40.2, WAVEFORM_BANDLIMIT_SAWTOOTH);
+  _osc2.begin(1.0, 40.0, WAVEFORM_BANDLIMIT_SAWTOOTH);
   _generatorMixer.gain(0, _parameters.sample_level); // sample
   _generatorMixer.gain(1, _parameters.osc1_level); // osc 1
   _generatorMixer.gain(2, _parameters.osc2_level); // osc 2
@@ -121,8 +121,8 @@ void voice::noteOff(uint8_t note, uint8_t velocity)
 
 void voice::setOscFrequency(uint8_t note)
 {
-  uint8_t osc1_baseFreq = NOTEFREQS[constrain(note + _parameters.osc1_transpose, 0, 127)];
-  uint8_t osc2_baseFreq = NOTEFREQS[constrain(note + _parameters.osc2_transpose, 0, 127)];
+  float osc1_baseFreq = NOTEFREQS[constrain(note + _parameters.osc1_transpose, 0, 127)];
+  float osc2_baseFreq = NOTEFREQS[constrain(note + _parameters.osc2_transpose, 0, 127)];
   _osc1.frequency(osc1_baseFreq * pow(2, -_parameters.detune));
   _osc2.frequency(osc2_baseFreq * pow(2, _parameters.detune));
 }

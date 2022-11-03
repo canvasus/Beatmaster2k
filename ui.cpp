@@ -50,7 +50,7 @@ const parameters displayParameters[] = {
                                          {"REVERB",   0,      0,        2.0,      0.1,        1,    &getReverbLevel, &setReverbLevel, nullptr},
                                          {"LENGTH",   0,      1,        64,        1,         0,    nullptr, nullptr, nullptr},
                                          {"SPEED",    0,      0,        64,        1,         0,    nullptr, nullptr, nullptr},
-                                         {"OUTPUT",   0,      0,        1,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
+                                         {"OUTPUT",   0,      0,        2,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
                                          {"BPM",      0,      20,       300,       1,         0,    &getBpm, &setBpm, nullptr}
                                         };
 
@@ -59,6 +59,7 @@ void setupUI()
 {
   Serial.println("UI SETUP");
   tft.begin();
+  //tft.setClock(20000000);
   tft.setRotation(3);
   tft.fillScreen(ILI9341_BLACK);
   showStartupScreen();
@@ -347,6 +348,7 @@ void drawPotWidget(uint8_t index, uint8_t parameter, bool selected, bool drawSta
 void LPinit()
 {
   LP1.setPadColor(CCstartStop, LP_RED);
+  LP1.setPadColor(CCeditMode, LP_RED);
 }
 
 void updateLaunchpadUI()
@@ -358,16 +360,34 @@ void updateLaunchpadUI()
     LP1.setActiveTrack(29 + currentTrack * 10 , tracks[currentTrack]->color);
     LPsetPageFromTrackData();
   }
+  if (sequencerState == STATE_RUNNING) LPsetStepIndicator();
 }
 
 void LPsetStepIndicator()
 {
-  
+  static uint8_t previousColumn = 0;
+  uint16_t  ticksPerColumn = ticksPerBeat/LP1.xZoomLevel;
+  uint8_t column = tracks[currentTrack]->getCurrentColumn(ticksPerColumn);
+  // check if currentColumn is in range of current page
+  if (column != previousColumn)
+  {
+    if ( (LP1.page * 8 <= column) && (column <= LP1.page * 8 + 7) )
+    {
+      // current column is in display range --> set current column
+      LP1.setColumnColor(column - LP1.page * 8, LP_RED);
+    }
+    if ((LP1.page * 8 <= previousColumn) && (previousColumn <= LP1.page * 8 + 7))
+    {
+      // previous column is in display range --> reset previous column
+      LPsetColumnFromTrackData(previousColumn - LP1.page  * 8);
+    }
+    previousColumn = column;
+  }
 }
 
 void LPpageIncrease()
 {
-  uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
+  uint8_t ticksPerColumn = ticksPerBeat / LP1.xZoomLevel;
   if ((LP1.page * 8 + 7) < (tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn) - 1))
   {
     LP1.page = LP1.page + 1;

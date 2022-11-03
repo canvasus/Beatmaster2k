@@ -6,15 +6,16 @@ uint8_t sequencerState      = STATE_STOPPED;
 uint8_t columnTimer         = 0;
 elapsedMicros tickTimer     = 0;
 uint16_t   bpm               = 120;
-const uint16_t ticksPerBeat = 24;         // 1/4 * 1/24 = 1/96th resolution
 uint16_t  oneTickUs         = 1000 * 60000 / (bpm * ticksPerBeat);
 int sequencerStep = -1;
 
+uint8_t sequencerEditMode = MODE_PATTERNEDIT;
+
 IntervalTimer sequencerUpdateTimer;
 
-MIDIcallback outputNoteOnFunctions[] = {voiceNoteOn, serialMidiNoteOn};
-MIDIcallback outputNoteOffFunctions[] = {voiceNoteOff, serialMidiNoteOff};
-String outputNames[] = {"Voice", "Serial"};
+MIDIcallback outputNoteOnFunctions[] = {voiceNoteOn, serialMidiNoteOn, deviceNoteOn};
+MIDIcallback outputNoteOffFunctions[] = {voiceNoteOff, serialMidiNoteOff, deviceNoteOff};
+String outputNames[] = {"Voice", "Serial", "USB device"};
 uint8_t nrOutputFunctions = sizeof(outputNoteOnFunctions)/sizeof(outputNoteOnFunctions[0]);
 
 void initSequencer()
