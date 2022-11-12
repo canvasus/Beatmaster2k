@@ -1,19 +1,18 @@
 #include "midiFunctions.h"
-//#include "track.h"
-//#include "sequencer.h"
 
 USBHost myusb;
 USBHub hub1(myusb);
 USBHub hub2(myusb);
-MIDIDevice_BigBuffer midi1(myusb); //Launchpad?
-MIDIDevice_BigBuffer midi2(myusb); // Midi keyboard ?
-MIDIDevice_BigBuffer midi3(myusb); // Midi keyboard ?
+MIDIDevice_BigBuffer midi1(myusb); // Launchpad or Midi device
+MIDIDevice_BigBuffer midi2(myusb); // Launchpad or Midi device
+MIDIDevice_BigBuffer midi3(myusb); // Launchpad or Midi device
+MIDIDevice_BigBuffer midi4(myusb); // Launchpad or Midi device
 LaunchPad LP1 = LaunchPad(1);
 
-USBDriver *drivers[] = {&midi1, &midi2, &midi3};
+USBDriver *drivers[] = {&midi1, &midi2, &midi3, &midi4};
 #define CNT_DEVICES (sizeof(drivers)/sizeof(drivers[0])) 
-bool driver_active[CNT_DEVICES] = {false, false, false};
-const char * driver_names[CNT_DEVICES] = {"midi1", "midi2", "midi3"};
+bool driver_active[CNT_DEVICES] = {false, false, false, false};
+const char * driver_names[CNT_DEVICES] = {"midi1", "midi2", "midi3", "midi4"};
 
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
@@ -46,8 +45,6 @@ void setupMidi()
   //MIDI.setHandleControlChange(myControlChange);
   locateUsbComponents();
   LPinit();
-
-
 }
 
 void locateUsbComponents()
@@ -55,7 +52,7 @@ void locateUsbComponents()
   bool LPassigned = false;
   bool localKeysAssigned = true;
   uint8_t LP_index = 0;
-  uint8_t localKeys_index = 0;
+  //uint8_t localKeys_index = 0;
   Serial.println("Searching for usb components...");
   while (! (LPassigned == true && localKeysAssigned == true))
   {
@@ -85,6 +82,20 @@ void locateUsbComponents()
   }
   configureLaunchPad(LP_index);
   //configureLocalKeys(localKeys_index);
+}
+
+void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize)
+{
+  char na[4] = {'N', '/', 'A'};
+  if (*drivers[usbIndex])
+  {
+    const uint8_t * productName = drivers[usbIndex]->product();
+    for(uint8_t i = 0; i < maxBufferSize; i++) buf[i] = productName[i];
+  }
+  else
+  {
+    for(uint8_t i = 0; i < 4; i++) buf[i] = na[i];
+  }
 }
 
 void configureLocalKeys(uint8_t driverIndex)
@@ -156,33 +167,23 @@ void deviceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
 
 void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
 {
-  Serial.print("Device send note OFF: ");
-  Serial.println(note, DEC);
   //usbMIDI.sendNoteOff(note, velocity, channel);
 }
 
-void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
-{
-  Voices[channel].noteOn(note, velocity);
-  //Serial.printf("voice0NoteOn ch %d note %d\n", channel, note);
-}
+void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) { Voices[channel].noteOn(note, velocity); }
+void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) { Voices[channel].noteOff(note, velocity); }
 
-void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
-{
-  Voices[channel].noteOff(note, velocity);
-  //Serial.printf("voice0NoteOff ch %d note %d\n", channel, note);
-}
+void serialMidiNoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { MIDI.sendNoteOn(noteValue, 127, channel); }
+void serialMidiNoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { MIDI.sendNoteOff(noteValue, 127, channel); }
 
-void serialMidiNoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity)
-{
-  MIDI.sendNoteOn(noteValue, 127, channel);
-}
-
-void serialMidiNoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity)
-{
-  MIDI.sendNoteOff(noteValue, 127, channel);
-}
-
+void midi1NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi1.sendNoteOn(noteValue, 127, channel); }
+void midi1NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi1.sendNoteOff(noteValue, 127, channel); }
+void midi2NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi2.sendNoteOn(noteValue, 127, channel); }
+void midi2NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi2.sendNoteOff(noteValue, 127, channel); }
+void midi3NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi3.sendNoteOn(noteValue, 127, channel); }
+void midi3NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi3.sendNoteOff(noteValue, 127, channel); }
+void midi4NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi4.sendNoteOn(noteValue, 127, channel); }
+void midi4NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi4.sendNoteOff(noteValue, 127, channel); }
 
 void myControlChange(byte channel, byte control, byte value)
 {

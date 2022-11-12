@@ -5,6 +5,11 @@
 #include "sequencer.h"
 #include <ILI9341_t3.h>
 #include <font_Arial.h> // from ILI9341_t3
+#include <Wire.h>
+#include <MCP23017.h>
+#include <Encoder.h>
+#include <Bounce.h>
+#include "audioFcns.h"
 
 #define SCREEN_YRES 240
 #define SCREEN_XRES 320
@@ -17,9 +22,7 @@
 #define TFT_CS 10
 // MOSI=11, MISO=12, SCK=13
 
-#include <Encoder.h>
-#include <Bounce.h>
-#include "audioFcns.h"
+#define MCP23017_ADDR 0x20
 
 #define ROT1_B 41   // GPIO_A17, J2 pin 7
 #define ROT1_A 40   // GPIO_A16, J2 pin 8
@@ -44,6 +47,7 @@
 #define PAGE_REVERB     10
 #define PAGE_TRACK      11
 #define PAGE_SEQ        12
+#define PAGE_LISTDEVICES 13
  
 #define OSC1WFM  0
 #define OSC2WFM  1
@@ -69,8 +73,9 @@
 #define TRACK_SPEED 21
 #define TRACK_OUTPUT 22
 #define SEQ_BPM 23
+#define TRACK_CHANNEL 24
 
-#define NR_PARAMETERS 23
+#define NR_PARAMETERS 25
 #define MAX_CHILDREN 8
 #define PAGE_NAV 0
 #define PAGE_PAR 1
@@ -119,6 +124,7 @@ extern Track *tracks[5];
 void setupUI();
 void showStartupScreen();
 
+
 void updateUI();
 void updateDisplayUI();
 void updateLaunchpadUI();
@@ -139,6 +145,9 @@ void updatePotWidget(uint8_t index, uint8_t parameter);
 float getValue(uint8_t parameter);
 void updateValue(uint8_t parameter, float value);
 
+void handleSpecialPages(bool firstCall);
+void displayDevicePage(bool firstCall);
+
 void LPinit();
 void LPsetStepIndicator();
 void LPpageIncrease();
@@ -151,6 +160,8 @@ void LPdisplayPatternPage(bool firstCall);
 
 int16_t getEncoderDirection(uint8_t encoderNr);
 uint8_t updateButton(uint8_t buttonNr);
+void initMcp();
+void updateMcp();
 
 //#define ILI9341_BLACK       0x0000      /*   0,   0,   0 */
 //#define ILI9341_NAVY        0x000F      /*   0,   0, 128 */

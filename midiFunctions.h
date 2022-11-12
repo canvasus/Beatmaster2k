@@ -12,6 +12,7 @@ extern LaunchPad LP1;
 
 void setupMidi();
 void locateUsbComponents();
+void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize);
 void configureLocalKeys(uint8_t driverIndex);
 void configureLaunchPad(uint8_t driverIndex);
 void updateMidi();
@@ -25,6 +26,14 @@ void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 void serialMidiNoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
 void serialMidiNoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi1NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi1NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi2NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi2NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi3NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi3NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi4NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi4NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
 
 void LPNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void LPNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);

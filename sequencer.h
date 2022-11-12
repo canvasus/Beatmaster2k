@@ -27,5 +27,8 @@ void setTrackOutput(float value);
 float getTrackOutput();
 String getOutputEnum(uint8_t value);
 
+float getTrackChannel();
+void setTrackChannel(float channel);
+
 void resetTracks();
 void flushTracksPlayedBuffers();

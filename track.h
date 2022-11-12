@@ -124,8 +124,7 @@ class Track {
     void          setHandleNoteOn(MIDIcallback cb);
     void          setHandleNoteOff(MIDIcallback cb);
 
-
-
-    
-    
+    uint8_t getTrackChannel();
+    void setTrackChannel(uint8_t channel);
+   
 };

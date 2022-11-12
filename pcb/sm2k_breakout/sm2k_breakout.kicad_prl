@@ -62,8 +62,8 @@
       35,
       36
     ],
-    "visible_layers": "801fcff_ffffffff",
-    "zone_display_mode": 0
+    "visible_layers": "801d0f3_ffffffff",
+    "zone_display_mode": 1
   },
   "meta": {
     "filename": "sm2k_breakout.kicad_prl",

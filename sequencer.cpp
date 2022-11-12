@@ -13,9 +13,9 @@ uint8_t sequencerEditMode = MODE_PATTERNEDIT;
 
 IntervalTimer sequencerUpdateTimer;
 
-MIDIcallback outputNoteOnFunctions[] = {voiceNoteOn, serialMidiNoteOn, deviceNoteOn};
-MIDIcallback outputNoteOffFunctions[] = {voiceNoteOff, serialMidiNoteOff, deviceNoteOff};
-String outputNames[] = {"Voice", "Serial", "USB device"};
+MIDIcallback outputNoteOnFunctions[] = {voiceNoteOn, serialMidiNoteOn, deviceNoteOn, midi1NoteOn, midi2NoteOn, midi3NoteOn, midi4NoteOn};
+MIDIcallback outputNoteOffFunctions[] = {voiceNoteOff, serialMidiNoteOff, deviceNoteOff, midi1NoteOff, midi1NoteOff, midi3NoteOff, midi4NoteOff};
+String outputNames[] = {"Voice", "Serial", "USB device", "USB 1", "USB 2", "USB 3", "USB 4"};
 uint8_t nrOutputFunctions = sizeof(outputNoteOnFunctions)/sizeof(outputNoteOnFunctions[0]);
 
 void initSequencer()
@@ -76,8 +76,10 @@ void setTrackOutput(float value)
 }
 
 float getTrackOutput() { return tracks[currentTrack]->outputId; }
-
 String getOutputEnum(uint8_t value) { return outputNames[value]; }
+
+float getTrackChannel() { return (float)(tracks[currentTrack]->getTrackChannel()); }
+void setTrackChannel(float channel) { tracks[currentTrack]->setTrackChannel((uint8_t)channel); }
 
 void resetTracks()
 {

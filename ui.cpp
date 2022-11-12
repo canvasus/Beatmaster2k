@@ -3,6 +3,7 @@
 ILI9341_t3 tft = ILI9341_t3(TFT_CS, TFT_DC);
 Encoder encoders[2] = {Encoder(ROT1_A, ROT1_B), Encoder(ROT2_A, ROT2_B)};
 Bounce bouncers[2] = {Bounce(ROT1_SW, 5), Bounce(ROT2_SW, 5)}; 
+MCP23017 mcp = MCP23017(MCP23017_ADDR, Wire1);
 
 uint8_t currentTrack = 0;
 uint8_t currentPattern = 0;
@@ -11,7 +12,7 @@ uint8_t LPdisplayMode = DISPLAYMODE_SEQUENCER;
 
 //                      .pageType .name       .pageBack   .nrChildren  .children  .widget
 const page pages[] = {
-                      {PAGE_NAV,  "HOME",     PAGE_HOME,  5,         {PAGE_SEQ, PAGE_TRACK, PAGE_VOICE, PAGE_EFX, PAGE_MIX}, W_NONE},
+                      {PAGE_NAV,  "HOME",     PAGE_HOME,  6,         {PAGE_SEQ, PAGE_TRACK, PAGE_VOICE, PAGE_EFX, PAGE_MIX, PAGE_LISTDEVICES}, W_NONE},
                       {PAGE_NAV,  "VOICE",    PAGE_HOME,  2,         {PAGE_OSC_WFM, PAGE_OSC_PITCH}, W_NONE},
                       {PAGE_PAR,  "AMPENV",   PAGE_VOICE, 4,         {AMPENV_ATTACK, AMPENV_DECAY, AMPENV_SUSTAIN, AMPENV_RELEASE}, W_POT},
                       {PAGE_PAR,  "FLTENV",   PAGE_VOICE, 4,         {FILTERENV_ATTACK, FILTERENV_DECAY, FILTERENV_SUSTAIN, FILTERENV_RELEASE}, W_POT},
@@ -22,8 +23,10 @@ const page pages[] = {
                       {PAGE_PAR,  "OSCTN",    PAGE_VOICE, 2,         {OSC2TRANSPOSE, OSC_DETUNE}, W_POT},
                       {PAGE_PAR,  "CHORUS",   PAGE_EFX,   1,         {CHORUS_LFORATE}, W_POT},
                       {PAGE_PAR,  "REVERB",   PAGE_EFX,   4,         {REVERB_SIZE, REVERB_LODAMP, REVERB_HIDAMP, REVERB_DIFFUSION}, W_POT},
-                      {PAGE_PAR,  "TRACK",    PAGE_HOME,  3,         {TRACK_LENGTH, TRACK_SPEED, TRACK_OUTPUT}, W_LIST},
-                      {PAGE_PAR,  "SEQ",      PAGE_HOME,  1,         {SEQ_BPM}, W_LIST}
+                      {PAGE_PAR,  "TRACK",    PAGE_HOME,  4,         {TRACK_LENGTH, TRACK_SPEED, TRACK_CHANNEL, TRACK_OUTPUT}, W_LIST},
+                      {PAGE_PAR,  "SEQ",      PAGE_HOME,  1,         {SEQ_BPM}, W_LIST},
+                      {PAGE_LISTDEVICES,  "USBDV",      PAGE_HOME,  1,         {}, W_LIST}
+               
 };
 
 //                                        name        .value  .minValue .maxValue .multiplier .displayPrecision  .getFunction .setFunction  .enumFunction                                          
@@ -50,8 +53,10 @@ const parameters displayParameters[] = {
                                          {"REVERB",   0,      0,        2.0,      0.1,        1,    &getReverbLevel, &setReverbLevel, nullptr},
                                          {"LENGTH",   0,      1,        64,        1,         0,    nullptr, nullptr, nullptr},
                                          {"SPEED",    0,      0,        64,        1,         0,    nullptr, nullptr, nullptr},
-                                         {"OUTPUT",   0,      0,        2,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
-                                         {"BPM",      0,      20,       300,       1,         0,    &getBpm, &setBpm, nullptr}
+                                         {"OUTPUT",   0,      0,        6,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
+                                         {"BPM",      0,      20,       300,       1,         0,    &getBpm, &setBpm, nullptr},
+                                         {"CHANNEL",  0,      0,        16,        1,         0,    &getTrackChannel, &setTrackChannel, nullptr}
+                                      
                                         };
 
 
@@ -59,12 +64,13 @@ void setupUI()
 {
   Serial.println("UI SETUP");
   tft.begin();
-  //tft.setClock(20000000);
   tft.setRotation(3);
   tft.fillScreen(ILI9341_BLACK);
   showStartupScreen();
   pinMode(ROT1_SW, INPUT_PULLUP);
   pinMode(ROT2_SW, INPUT_PULLUP);
+  initMcp();
+  
   updateHeader(currentTrack, currentPattern, 120, true);
 }
 
@@ -80,14 +86,20 @@ void showStartupScreen()
     tft.drawFastHLine(10, 120 + i * 4, 300, tft.color565(0,200 - i * 10, 0));
     delay(200);
   }
-   
   tft.fillScreen(ILI9341_BLACK);
 }
 
 void updateUI()
 {
+  static elapsedMillis mcpTimer = 0;
   updateDisplayUI();
   updateLaunchpadUI();
+  if (mcpTimer > 100)
+  {
+    mcpTimer = 0;
+    updateMcp();
+  }
+  
 }
 
 // DISPLAY UI FUNCTIONS
@@ -98,7 +110,8 @@ void updateDisplayUI()
   static uint8_t oldPage = PAGE_HOME;
   static bool firstCall = true;
   if (pages[currentPage].pageType == PAGE_NAV) updateNavigationPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall);
-  else updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall);
+  else if (pages[currentPage].pageType == PAGE_PAR) updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall);
+  else handleSpecialPages(firstCall);
   firstCall = !(oldPage == currentPage);
   oldPage =  currentPage;
   updateHeader(currentTrack, currentPattern, 120, false);
@@ -342,6 +355,33 @@ void drawPotWidget(uint8_t index, uint8_t parameter, bool selected, bool drawSta
   tft.drawLine(xCenter, yCenter, xLineEnd, yLineEnd, ILI9341_WHITE);
 }
 
+void handleSpecialPages(bool firstCall)
+{
+  switch (pages[currentPage].pageType)
+  {
+    case PAGE_LISTDEVICES:
+      displayDevicePage(firstCall);
+      break;
+  }
+}
+
+void displayDevicePage(bool firstCall)
+{
+  if (firstCall)
+  {
+    tft.fillRect(0, HEADER_HEIGHT, SCREEN_XRES, SCREEN_XRES - HEADER_HEIGHT , ILI9341_BLACK);
+    for (uint8_t usbIndex = 0; usbIndex < 4; usbIndex++)
+    {
+      char buf[13];
+      getUsbDeviceName(usbIndex, buf, 12);
+      drawMenuButton(usbIndex ,usbIndex , false);
+      drawMenuButton(usbIndex + 5 ,buf, false);
+    }
+  }
+  if (updateButton(1)) currentPage = pages[currentPage].pageBack;  
+}
+
+
 // LAUNCHPAD UI FUNCTIONS
 // ********************************************
 
@@ -465,13 +505,13 @@ int16_t getEncoderDirection(uint8_t encoderNr)
   {
     returnValue = 1;
     encoders[encoderNr].write(0);
-    Serial.printf("Encoder %d: %d \n", encoderNr, value);
+    //Serial.printf("Encoder %d: %d \n", encoderNr, value);
   }
   if (value < -3)
   {
     returnValue = -1;
     encoders[encoderNr].write(0);
-    Serial.printf("Encoder %d: %d \n", encoderNr, value);
+    //Serial.printf("Encoder %d: %d \n", encoderNr, value);
   }
   return returnValue;
 }
@@ -481,9 +521,54 @@ uint8_t updateButton(uint8_t buttonNr)
   bouncers[buttonNr].update();
   if (bouncers[buttonNr].fallingEdge())
   {
-    Serial.print("Button ");
-    Serial.println(buttonNr);
+    //Serial.print("Button ");
+    //Serial.println(buttonNr);
     return 1;
   }
   else return 0;
+}
+
+void initMcp()
+{
+  Wire1.begin();
+  mcp.init();
+  mcp.portMode(MCP23017Port::A, 0);          //Port A as output
+  mcp.portMode(MCP23017Port::B, 0b11111111); //Port B as input
+
+  mcp.writeRegister(MCP23017Register::GPPU_B, 0xFF);  //port B weak pullup
+  mcp.writeRegister(MCP23017Register::IPOL_B, 0xFF);  //port B inverted polarity
+  
+  mcp.writeRegister(MCP23017Register::GPIO_A, 0x00);  //Reset port A 
+  mcp.writeRegister(MCP23017Register::GPIO_B, 0x00);  //Reset port B
+}
+
+void updateMcp()
+{
+  static uint8_t portB = 0;
+  uint8_t currentB = mcp.readPort(MCP23017Port::B); // read buttons, pressed = 1
+  if (portB != currentB)
+  {
+    Serial.printf("MCP: %d\n", currentB);
+    portB = currentB;
+    switch (portB)
+    {
+      case 1:
+        currentPage = PAGE_HOME;
+        mcp.writePort(MCP23017Port::A, ~1); // write leds, 0 = led lit
+        break;
+      case 2:
+        currentPage = PAGE_MIX;
+        mcp.writePort(MCP23017Port::A, ~2);
+        break;
+      case 4:
+        currentPage = PAGE_LISTDEVICES;
+        mcp.writePort(MCP23017Port::A, ~4);
+        break;
+      case 8:
+        break;
+      case 16:
+        break;
+        
+    }
+  }
 }

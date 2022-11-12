@@ -278,6 +278,8 @@ uint8_t Track::getPatternStatus(uint8_t patternId)
   else return PATTERN_FILLED;
 }
 
+uint8_t Track::getTrackChannel() { return _midiChannel; }
+void Track::setTrackChannel(uint8_t channel) { _midiChannel =  channel; }
 
 // debug array printouts
 void Track::printEventArray(uint8_t lastIndex)
