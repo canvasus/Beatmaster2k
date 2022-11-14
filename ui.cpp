@@ -7,56 +7,32 @@ MCP23017 mcp = MCP23017(MCP23017_ADDR, Wire1);
 
 uint8_t currentTrack = 0;
 uint8_t currentPattern = 0;
-uint8_t currentPage = PAGE_HOME;
+int16_t currentEvent = -1;
+uint8_t currentPage = PAGE_SONG;
 uint8_t LPdisplayMode = DISPLAYMODE_SEQUENCER;
 
 //                      .pageType .name       .pageBack   .nrChildren  .children  .widget
 const page pages[] = {
-                      {PAGE_NAV,  "HOME",     PAGE_HOME,  6,         {PAGE_SEQ, PAGE_TRACK, PAGE_VOICE, PAGE_EFX, PAGE_MIX, PAGE_LISTDEVICES}, W_NONE},
-                      {PAGE_NAV,  "VOICE",    PAGE_HOME,  2,         {PAGE_OSC_WFM, PAGE_OSC_PITCH}, W_NONE},
-                      {PAGE_PAR,  "AMPENV",   PAGE_VOICE, 4,         {AMPENV_ATTACK, AMPENV_DECAY, AMPENV_SUSTAIN, AMPENV_RELEASE}, W_POT},
-                      {PAGE_PAR,  "FLTENV",   PAGE_VOICE, 4,         {FILTERENV_ATTACK, FILTERENV_DECAY, FILTERENV_SUSTAIN, FILTERENV_RELEASE}, W_POT},
-                      {PAGE_NAV,  "MOD",      PAGE_VOICE, 2,         {PAGE_OSC_WFM, PAGE_OSC_PITCH}, W_NONE},
-                      {PAGE_NAV,  "EFX",      PAGE_HOME,  2,         {PAGE_CHORUS, PAGE_REVERB}, W_NONE},
-                      {PAGE_PAR,  "MIX",      PAGE_HOME,  3,         {MIX_DRY, MIX_CHORUS, MIX_REVERB}, W_POT},
-                      {PAGE_PAR,  "OSCWF",    PAGE_VOICE, 2,         {OSC1WFM, OSC2WFM}, W_LIST},
-                      {PAGE_PAR,  "OSCTN",    PAGE_VOICE, 2,         {OSC2TRANSPOSE, OSC_DETUNE}, W_POT},
-                      {PAGE_PAR,  "CHORUS",   PAGE_EFX,   1,         {CHORUS_LFORATE}, W_POT},
-                      {PAGE_PAR,  "REVERB",   PAGE_EFX,   4,         {REVERB_SIZE, REVERB_LODAMP, REVERB_HIDAMP, REVERB_DIFFUSION}, W_POT},
-                      {PAGE_PAR,  "TRACK",    PAGE_HOME,  4,         {TRACK_LENGTH, TRACK_SPEED, TRACK_CHANNEL, TRACK_OUTPUT}, W_LIST},
-                      {PAGE_PAR,  "SEQ",      PAGE_HOME,  1,         {SEQ_BPM}, W_LIST},
-                      {PAGE_LISTDEVICES,  "USBDV",      PAGE_HOME,  1,         {}, W_LIST}
+                      {PAGE_PAR,  "SONG",     PAGE_SONG,  1,         {SONG_BPM}, W_LIST},
+                      {PAGE_PAR,  "PATTERN",  PAGE_PATTERN,  3,      {PATTERN_LENGTH, PATTERN_SPEED, PATTERN_EVENTLENGTHDEF}, W_LIST},
+                      {PAGE_PAR,  "EVENT",    PAGE_EVENT, 1,         {EVENT_LENGTH}, W_LIST},
+                      {PAGE_PAR,  "TRACK",    PAGE_TRACK,  3,        {TRACK_CHANNEL, TRACK_OUTPUT, TRACK_TRANSPOSESTATUS}, W_LIST},
+                      {PAGE_PAR,  "FILE",     PAGE_FILE,  0,         {}, W_NONE},
+                      {PAGE_LISTDEVICES,  "USBDEV",      PAGE_LISTDEVICES,  1,         {}, W_LIST}
                
 };
 
 //                                        name        .value  .minValue .maxValue .multiplier .displayPrecision  .getFunction .setFunction  .enumFunction                                          
 const parameters displayParameters[] = { 
-                                         {"OSC1WF",   0,      0,        3,        1.0,        0,    nullptr, nullptr, nullptr},
-                                         {"OSC2WF",   0,      0,        3,        1.0,        0,    nullptr, nullptr, nullptr},
-                                         {"OSC2TRP",  0,    -24,       24,        1.0,        0,    nullptr, nullptr, nullptr},
-                                         {"OSC DET",  0,      0,        1,        0.01,       2,    nullptr, nullptr, nullptr},
-                                         {"ATTACK",   0,      0,        500.0,    1.0,        0,    nullptr, nullptr, nullptr},
-                                         {"DECAY",    0,      0,        500.0,    10.0,       0,    nullptr, nullptr, nullptr},
-                                         {"SUSTAIN",  0,      0,        1.0,      0.01,       2,    nullptr, nullptr, nullptr},
-                                         {"RELEASE",  0,      0,        3000.0,   10.0,       0,    nullptr, nullptr, nullptr},
-                                         {"ATTACK",   0,      0,        500.0,    1.0,        0,    nullptr, nullptr, nullptr},
-                                         {"DECAY",    0,      0,        500.0,    10.0,       0,    nullptr, nullptr, nullptr},
-                                         {"SUSTAIN",  0,      0,        1.0,      0.01,       2,    nullptr, nullptr, nullptr},
-                                         {"RELEASE",  0,      0,        3000.0,   10.0,       0,    nullptr, nullptr, nullptr},
-                                         {"LFORATE",  0,      0,        12,       0.1,        1,    nullptr, nullptr, nullptr},
-                                         {"SIZE",     0,      0,        1,        0.1,        1,    nullptr, nullptr, nullptr},
-                                         {"LODAMP",   0,      0,        1,        0.1,        1,    nullptr, nullptr, nullptr},
-                                         {"HIDAMP",   0,      0,        1,        0.1,        1,    nullptr, nullptr, nullptr},
-                                         {"DIFFUS",   0,      0,        1,        0.1,        1,    nullptr, nullptr, nullptr},
-                                         {"DRY",      0,      0,        2.0,      0.1,        1,    &getDryLevel, &setDryLevel, nullptr},
-                                         {"CHORUS",   0,      0,        2.0,      0.1,        1,    &getChorusLevel, &setChorusLevel, nullptr},
-                                         {"REVERB",   0,      0,        2.0,      0.1,        1,    &getReverbLevel, &setReverbLevel, nullptr},
-                                         {"LENGTH",   0,      1,        64,        1,         0,    nullptr, nullptr, nullptr},
-                                         {"SPEED",    0,      0,        64,        1,         0,    nullptr, nullptr, nullptr},
+                                         {"LENGTH",   0,      1,        128,       1,         0,    &getTrackLengthColumns, &setTrackLengthColumns, nullptr},
+                                         {"SPEED",    0,      0.5,      2,        0.5,        1,    nullptr, nullptr, nullptr},
+                                         {"DEF.LEN",  0,      0,        64,        1,         0,    nullptr, nullptr, nullptr},
                                          {"OUTPUT",   0,      0,        6,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
                                          {"BPM",      0,      20,       300,       1,         0,    &getBpm, &setBpm, nullptr},
-                                         {"CHANNEL",  0,      0,        16,        1,         0,    &getTrackChannel, &setTrackChannel, nullptr}
-                                      
+                                         {"CHANNEL",  0,      0,        16,        1,         0,    &getTrackChannel, &setTrackChannel, nullptr},
+                                         {"LENGTH",  0,      0,        128,        1,         0,    &getEventLength, &setEventLength, nullptr},
+                                         {"REC.TRP",  0,      0,        2,        1,         0,     &getTransposeStatus, &setTransposeStatus, &getNoYesSelectedEnum}
+                                         
                                         };
 
 
@@ -107,14 +83,14 @@ void updateUI()
 
 void updateDisplayUI()
 {
-  static uint8_t oldPage = PAGE_HOME;
+  static uint8_t oldPage = PAGE_SONG;
   static bool firstCall = true;
   if (pages[currentPage].pageType == PAGE_NAV) updateNavigationPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall);
   else if (pages[currentPage].pageType == PAGE_PAR) updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall);
   else handleSpecialPages(firstCall);
   firstCall = !(oldPage == currentPage);
   oldPage =  currentPage;
-  updateHeader(currentTrack, currentPattern, 120, false);
+  updateHeader(currentTrack, currentPattern, bpm, false);
 }
 
 void updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCall)
@@ -123,26 +99,23 @@ void updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCal
   static uint8_t oldPatternNr = 255;
   static uint8_t oldBpm = 255;
   static uint8_t oldPage = 255;
-  const uint16_t xTrack = 85;
-  const uint16_t xPattern = 150;
-  const uint16_t xBpm = 230;
   
   if (firstCall)
   {
-    tft.fillRect(85, 0, SCREEN_XRES - 85, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.fillRect(HEADER_X, HEADER_Y, HEADER_WIDTH, HEADER_HEIGHT, ILI9341_LIGHTGREY);
     tft.setTextColor(ILI9341_BLACK);
-    tft.setFont(Arial_14);
-    tft.setCursor(xTrack + 5, 6);
+    tft.setFont(Arial_12);
+    tft.setCursor(HEADER_TEXT_X, 1* HEADER_OFFSET_Y);
     tft.print("TRK");
-    tft.setCursor(xPattern + 5, 6);
+    tft.setCursor(HEADER_TEXT_X, 3* HEADER_OFFSET_Y);
     tft.print("PTN");
-    tft.setCursor(xBpm + 5, 6);
+    tft.setCursor(HEADER_TEXT_X, 5* HEADER_OFFSET_Y);
     tft.print("BPM");
   }
   if (oldPage != currentPage)
   {
     oldPage = currentPage;
-    tft.fillRect(0, 0, 80, HEADER_HEIGHT, ILI9341_BLUE);
+    tft.fillRect(0, 0, PAGEINDICATOR_WIDTH, PAGEINDICATOR_HEIGHT, ILI9341_BLUE);
     tft.setCursor(3, 6);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_WHITE);
@@ -150,28 +123,28 @@ void updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCal
   }
   if (oldTrackNr != trackNr)
   {
-    tft.fillRect(xTrack + 50, 0, 20, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.fillRect(HEADER_TEXT_X, 2* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X, 2* HEADER_OFFSET_Y);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
-    tft.setCursor(xTrack + 50, 6);
     tft.print(trackNr);
     oldTrackNr = trackNr;
   }
   if (oldPatternNr != patternNr)
   {
-    tft.fillRect(xPattern + 50, 0, 30, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.fillRect(HEADER_TEXT_X, 4* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X, 4* HEADER_OFFSET_Y);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
-    tft.setCursor(xPattern + 50, 6);
     tft.printf("%02d", patternNr);
     oldPatternNr = patternNr;
   }
   if (oldBpm != bpm)
   {
-    tft.fillRect(xBpm + 50, 0, 30, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.fillRect(HEADER_TEXT_X, 6* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X, 6* HEADER_OFFSET_Y);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
-    tft.setCursor(xBpm + 50, 6);
     tft.printf("%03d", bpm);
     oldBpm = bpm;
   }
@@ -208,9 +181,9 @@ void drawMenuButton(uint8_t index, String text, bool selected)
 {
   uint8_t row = index % 5;
   uint8_t column = index / 5 ;
-  uint8_t x1 = BUTTON_PADDING + column * (BUTTON_WIDTH + BUTTON_PADDING);
-  uint8_t y1 = HEADER_HEIGHT + BUTTON_PADDING + row * (BUTTON_HEIGHT + BUTTON_PADDING);
-  const uint8_t w = BUTTON_WIDTH;
+  uint8_t x1 = BUTTON_PADDING + column * (VAR_NAME_WIDTH + BUTTON_PADDING);
+  uint8_t y1 = PAGEINDICATOR_HEIGHT + BUTTON_PADDING + row * (BUTTON_HEIGHT + BUTTON_PADDING);
+  const uint8_t w = VAR_NAME_WIDTH;
   const uint8_t h = BUTTON_HEIGHT;
   if (selected)
   {
@@ -224,7 +197,7 @@ void drawMenuButton(uint8_t index, String text, bool selected)
     tft.fillRect(x1 + 1, y1 + 1, w - 2, h - 2, ILI9341_BLUE);
     tft.setTextColor(ILI9341_WHITE);
   }
-  tft.setFont(Arial_14);
+  tft.setFont(Arial_12);
   tft.setCursor(x1 + 8, y1 + 5);
   tft.print(text);
 }
@@ -234,11 +207,12 @@ void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParamet
 {
   static int16_t selectedButton = 0;
   float variables[nrParameters];
+
   for (uint8_t i = 0; i < nrParameters; i++) variables[i] = getValue(parameterArray[i]);
- 
+  
   if (firstCall)
   {
-    tft.fillRect(0, HEADER_HEIGHT, SCREEN_XRES, SCREEN_XRES - HEADER_HEIGHT , ILI9341_BLACK);
+    tft.fillRect(0, PAGEINDICATOR_HEIGHT, HEADER_X - 1, SCREEN_XRES - PAGEINDICATOR_HEIGHT , ILI9341_BLACK);
     selectedButton = 0;
     encoders[0].write(selectedButton);
     if (pages[currentPage].widget == W_LIST) for (uint8_t i = 0; i < nrParameters; i++) drawParameterRow(i, parameterArray[i], i == 0);
@@ -293,10 +267,10 @@ void drawParameterRow(uint8_t index, uint8_t parameter, bool selected)
 void updateParameterRow(uint8_t index, uint8_t parameter)
 {
    uint8_t row = index % 4;
-   uint8_t x1 = 2 * BUTTON_PADDING + BUTTON_WIDTH;
-   uint8_t y1 = HEADER_HEIGHT + BUTTON_PADDING + row * (BUTTON_HEIGHT + BUTTON_PADDING);
-   tft.fillRect(x1 + 1, y1 + 1, BUTTON_WIDTH - 2, BUTTON_HEIGHT - 2, ILI9341_BLACK);
-   tft.drawRect(x1 + 1 , y1 + 1, BUTTON_WIDTH - 2, BUTTON_HEIGHT - 2, ILI9341_BLUE);
+   uint8_t x1 = VAR_NAME_WIDTH + BUTTON_PADDING;
+   uint8_t y1 = PAGEINDICATOR_HEIGHT + BUTTON_PADDING + row * (BUTTON_HEIGHT + BUTTON_PADDING);
+   tft.fillRect(x1 + 1, y1 + 1, VAR_VALUE_WIDTH - 2, BUTTON_HEIGHT - 2, ILI9341_BLACK);
+   tft.drawRect(x1 + 1 , y1 + 1, VAR_VALUE_WIDTH - 2, BUTTON_HEIGHT - 2, ILI9341_BLUE);
    tft.setCursor(x1 + 8, y1 + 5);
    tft.setTextColor(ILI9341_WHITE);
    float value = getValue(parameter);
@@ -306,53 +280,53 @@ void updateParameterRow(uint8_t index, uint8_t parameter)
 
 void drawPotWidget(uint8_t index, uint8_t parameter, bool selected, bool drawStatics)
 {
-  uint8_t row = index / 4;
-  uint8_t column = index % 4;
-  
-  uint16_t boxColor = ILI9341_DARKGREY;
-  if (selected) boxColor = ILI9341_BLUE;
-  const uint8_t boxWidth = 70;
-  const uint8_t boxHeight = 100;
-  const uint8_t boxPadding = 5;
-  const uint8_t radius = 25;
-
-  uint8_t xBox = boxPadding + column * (boxWidth + boxPadding);
-  uint8_t yBox = HEADER_HEIGHT + boxPadding + row * (boxHeight + boxPadding);
-  uint8_t xCenter = xBox +  boxWidth / 2;
-  uint8_t yCenter = yBox + boxHeight / 2;
-
-  const uint16_t textBoxColor = ILI9341_LIGHTGREY;
-  const uint8_t textBoxWidth = boxWidth - 8;
-  const uint8_t textBoxHeight = 16;
-  tft.setFont(Arial_10);
-  tft.setTextColor(ILI9341_BLACK);
-  uint8_t xNameBox = xBox + 4;
-  uint8_t yNameBox = yBox + 4;
-  uint8_t xValueBox = xBox + 4;
-  uint8_t yValueBox = yBox + boxHeight - 4 - textBoxHeight;
-
-  const float angleSpan = 5.0; // radians
-  const float angleStart = 5.5; // radians
-  float value = getValue(parameter);
-  float angleFractional = (value - displayParameters[parameter].minValue) / ( displayParameters[parameter].maxValue - displayParameters[parameter].minValue );
-  float angle = angleStart - angleFractional * angleSpan;
-  uint8_t xLineEnd = xCenter + (radius - 5) * sin(angle);
-  uint8_t yLineEnd = yCenter + (radius - 5) * cos(angle);
-
-  if (drawStatics)
-  {
-    tft.fillRect(xBox, yBox, boxWidth, boxHeight, boxColor);  
-    tft.fillRect(xNameBox, yNameBox, textBoxWidth, textBoxHeight, textBoxColor);
-    tft.setCursor(xNameBox + 2, yNameBox + 3);
-    tft.print(displayParameters[parameter].name);
-    tft.drawCircle(xCenter, yCenter, radius, ILI9341_WHITE);
-  }
-  
-  tft.fillRect(xValueBox, yValueBox, textBoxWidth, textBoxHeight, textBoxColor);
-  tft.setCursor(xValueBox + 3, yValueBox + 3);
-  tft.print(value, displayParameters[parameter].displayPrecision);
-  tft.fillCircle(xCenter, yCenter, radius - 4, boxColor);
-  tft.drawLine(xCenter, yCenter, xLineEnd, yLineEnd, ILI9341_WHITE);
+//  uint8_t row = index / 4;
+//  uint8_t column = index % 4;
+//  
+//  uint16_t boxColor = ILI9341_DARKGREY;
+//  if (selected) boxColor = ILI9341_BLUE;
+//  const uint8_t boxWidth = 70;
+//  const uint8_t boxHeight = 100;
+//  const uint8_t boxPadding = 5;
+//  const uint8_t radius = 25;
+//
+//  uint8_t xBox = boxPadding + column * (boxWidth + boxPadding);
+//  uint8_t yBox = HEADER_HEIGHT + boxPadding + row * (boxHeight + boxPadding);
+//  uint8_t xCenter = xBox +  boxWidth / 2;
+//  uint8_t yCenter = yBox + boxHeight / 2;
+//
+//  const uint16_t textBoxColor = ILI9341_LIGHTGREY;
+//  const uint8_t textBoxWidth = boxWidth - 8;
+//  const uint8_t textBoxHeight = 16;
+//  tft.setFont(Arial_10);
+//  tft.setTextColor(ILI9341_BLACK);
+//  uint8_t xNameBox = xBox + 4;
+//  uint8_t yNameBox = yBox + 4;
+//  uint8_t xValueBox = xBox + 4;
+//  uint8_t yValueBox = yBox + boxHeight - 4 - textBoxHeight;
+//
+//  const float angleSpan = 5.0; // radians
+//  const float angleStart = 5.5; // radians
+//  float value = getValue(parameter);
+//  float angleFractional = (value - displayParameters[parameter].minValue) / ( displayParameters[parameter].maxValue - displayParameters[parameter].minValue );
+//  float angle = angleStart - angleFractional * angleSpan;
+//  uint8_t xLineEnd = xCenter + (radius - 5) * sin(angle);
+//  uint8_t yLineEnd = yCenter + (radius - 5) * cos(angle);
+//
+//  if (drawStatics)
+//  {
+//    tft.fillRect(xBox, yBox, boxWidth, boxHeight, boxColor);  
+//    tft.fillRect(xNameBox, yNameBox, textBoxWidth, textBoxHeight, textBoxColor);
+//    tft.setCursor(xNameBox + 2, yNameBox + 3);
+//    tft.print(displayParameters[parameter].name);
+//    tft.drawCircle(xCenter, yCenter, radius, ILI9341_WHITE);
+//  }
+//  
+//  tft.fillRect(xValueBox, yValueBox, textBoxWidth, textBoxHeight, textBoxColor);
+//  tft.setCursor(xValueBox + 3, yValueBox + 3);
+//  tft.print(value, displayParameters[parameter].displayPrecision);
+//  tft.fillCircle(xCenter, yCenter, radius - 4, boxColor);
+//  tft.drawLine(xCenter, yCenter, xLineEnd, yLineEnd, ILI9341_WHITE);
 }
 
 void handleSpecialPages(bool firstCall)
@@ -369,13 +343,16 @@ void displayDevicePage(bool firstCall)
 {
   if (firstCall)
   {
-    tft.fillRect(0, HEADER_HEIGHT, SCREEN_XRES, SCREEN_XRES - HEADER_HEIGHT , ILI9341_BLACK);
+    tft.fillRect(0, PAGEINDICATOR_HEIGHT, SCREEN_XRES - HEADER_WIDTH - 1, SCREEN_YRES - PAGEINDICATOR_HEIGHT , ILI9341_BLACK);
     for (uint8_t usbIndex = 0; usbIndex < 4; usbIndex++)
     {
-      char buf[13];
-      getUsbDeviceName(usbIndex, buf, 12);
-      drawMenuButton(usbIndex ,usbIndex , false);
-      drawMenuButton(usbIndex + 5 ,buf, false);
+      char buf[16];
+      getUsbDeviceName(usbIndex, buf, 15);
+      tft.setCursor(5, (usbIndex + 1) * (PAGEINDICATOR_HEIGHT + 5));
+      tft.print("USB");
+      tft.print(usbIndex);
+      tft.print(": ");
+      tft.print(buf);
     }
   }
   if (updateButton(1)) currentPage = pages[currentPage].pageBack;  
@@ -548,25 +525,33 @@ void updateMcp()
   uint8_t currentB = mcp.readPort(MCP23017Port::B); // read buttons, pressed = 1
   if (portB != currentB)
   {
-    Serial.printf("MCP: %d\n", currentB);
+    //Serial.printf("MCP: %d\n", currentB);
     portB = currentB;
     switch (portB)
     {
-      case 1:
-        currentPage = PAGE_HOME;
-        mcp.writePort(MCP23017Port::A, ~1); // write leds, 0 = led lit
-        break;
-      case 2:
-        currentPage = PAGE_MIX;
-        mcp.writePort(MCP23017Port::A, ~2);
+      case 8:
+        currentPage = PAGE_SONG;
+        //mcp.writePort(MCP23017Port::A, 8); // write leds, 1 = led lit
         break;
       case 4:
-        currentPage = PAGE_LISTDEVICES;
-        mcp.writePort(MCP23017Port::A, ~4);
+        currentPage = PAGE_PATTERN;
+        //mcp.writePort(MCP23017Port::A, 4);
         break;
-      case 8:
+      case 2:
+        currentPage = PAGE_EVENT;
+        //mcp.writePort(MCP23017Port::A, 2);
+        break;
+      case 1:
+        currentPage = PAGE_TRACK;
+        //mcp.writePort(MCP23017Port::A, 1);
         break;
       case 16:
+        currentPage = PAGE_FILE;
+        //mcp.writePort(MCP23017Port::A, 16);
+        break;
+       case 128:
+        currentPage = PAGE_LISTDEVICES;
+        //mcp.writePort(MCP23017Port::A, 128);
         break;
         
     }

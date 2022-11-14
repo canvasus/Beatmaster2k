@@ -10,9 +10,12 @@ Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
    _cuedEventIndex        = 0;
    _midiChannel           = trackId;
    _defaultNoteLengthTicks = 8 ; //(4 / 96 = <1/16)
+   
    _noteOn_cb = nullptr;
    _noteOff_cb = nullptr;
    outputId = 0;
+   trackRespondToTranspose = false;
+   trackMuted = false;
 
    for (int patternId = 0; patternId < NR_PATTERNS; patternId++)
    {
@@ -128,7 +131,10 @@ void Track::flushPlayedBuffer()
 uint16_t Track::getCurrentTrackTick() { return _currentTrackTick;}
 void Track::setPatternLengthBeats(uint16_t lengthBeats) { _patterns[_currentPattern].patternLengthTicks = lengthBeats * RESOLUTION - 1; }
 uint16_t Track::getPatternLengthBeats() { return ( (_patterns[_currentPattern].patternLengthTicks + 1) / RESOLUTION); }
-uint16_t Track::getPatternLengthColumns(uint16_t ticksPerColumn) {return ( (_patterns[_currentPattern].patternLengthTicks + 1) / ticksPerColumn); }
+
+uint16_t Track::getPatternLengthColumns(uint16_t ticksPerColumn) {return ( (_patterns[_currentPattern].patternLengthTicks + 1) / RESOLUTION16TH); }
+void     Track::setPatternLengthColumns(uint16_t length, uint16_t ticksPerColumn) { _patterns[_currentPattern].patternLengthTicks = length * RESOLUTION16TH - 1; }
+
 uint16_t Track::getCurrentBeat() { return _currentTrackTick / RESOLUTION;}
 uint16_t Track::getCurrentColumn(uint16_t ticksPerColumn) { return _currentTrackTick / ticksPerColumn; }
 uint16_t Track::getTrackDefaultNoteLengthTicks() { return _defaultNoteLengthTicks; }
@@ -212,6 +218,17 @@ uint16_t Track::getEventsInTickInterval(uint16_t tickStart, uint16_t tickEnd, ui
     }
   }
   return matchingEventCounter;
+}
+
+int16_t Track::getEventId(uint16_t tick, uint8_t note)
+{
+  uint8_t index = 0;
+  while (index < _nrEvents)
+  {
+    if (_patterns[_currentPattern].trackEvents[index].tick == tick && _patterns[_currentPattern].trackEvents[index].noteValue == note) return index;
+    index++;
+  }
+  return -1;
 }
 
 uint16_t Track::getEventsInTickNoteInterval(uint16_t tickStart, uint16_t tickEnd, uint8_t noteStart, uint8_t noteEnd)

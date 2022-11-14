@@ -7,12 +7,13 @@
 #define MODE_PATTERNEDIT 0
 #define MODE_EVENTEDIT  1
 
-#define NR_TRACKS 5
+#define NR_TRACKS 7
 
 #define ticksPerBeat 24         // 1/4 * 1/24 = 1/96th resolution
 
 extern uint8_t sequencerState;
 extern uint8_t sequencerEditMode;
+extern uint16_t   bpm ;
 
 void initSequencer();
 void updateSequencer();
@@ -29,6 +30,17 @@ String getOutputEnum(uint8_t value);
 
 float getTrackChannel();
 void setTrackChannel(float channel);
+
+float getTrackLengthColumns();
+void setTrackLengthColumns(float columns);
+
+float getEventLength();
+void setEventLength(float length);
+
+void setTranspose(int transpose);
+float getTransposeStatus();
+void setTransposeStatus(float status);
+String getNoYesSelectedEnum(uint8_t value);
 
 void resetTracks();
 void flushTracksPlayedBuffers();

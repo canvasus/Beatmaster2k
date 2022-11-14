@@ -13,10 +13,20 @@
 
 #define SCREEN_YRES 240
 #define SCREEN_XRES 320
-#define HEADER_HEIGHT 30
 #define BUTTON_HEIGHT 30
 #define BUTTON_WIDTH  150
 #define BUTTON_PADDING 5
+#define VAR_NAME_WIDTH 100
+#define VAR_VALUE_WIDTH 155
+
+#define HEADER_X        270
+#define HEADER_Y        0
+#define HEADER_WIDTH    50
+#define HEADER_HEIGHT   SCREEN_YRES
+#define HEADER_TEXT_X   275
+#define HEADER_OFFSET_Y 30  
+#define PAGEINDICATOR_HEIGHT 30 
+#define PAGEINDICATOR_WIDTH 140 
 
 #define TFT_DC  9
 #define TFT_CS 10
@@ -24,56 +34,31 @@
 
 #define MCP23017_ADDR 0x20
 
-#define ROT1_B 41   // GPIO_A17, J2 pin 7
-#define ROT1_A 40   // GPIO_A16, J2 pin 8
-#define ROT1_SW 2   // GPIO_D2, J2 pin 10
+#define ROT2_B 41   // GPIO_A17, J2 pin 7
+#define ROT2_A 40   // GPIO_A16, J2 pin 8
+#define ROT2_SW 2   // GPIO_D2, J2 pin 10
                     // GND, J2 pin 9
 
-#define ROT2_B 3    // GPIO_D3, J2 pin 11
-#define ROT2_A 4    // GPIO_D4, J2 pin 13
-#define ROT2_SW 15  // GPIO_A1, J2 pin 14
+#define ROT1_B 3    // GPIO_D3, J2 pin 11
+#define ROT1_A 4    // GPIO_D4, J2 pin 13
+#define ROT1_SW 15  // GPIO_A1, J2 pin 14
                     // GND, J2 pin 12
 
-#define PAGE_HOME       0
-#define PAGE_VOICE      1
-#define PAGE_AMPENV     2
-#define PAGE_FILTERENV  3
-#define PAGE_MOD        4
-#define PAGE_EFX        5
-#define PAGE_MIX        6
-#define PAGE_OSC_WFM    7
-#define PAGE_OSC_PITCH  8
-#define PAGE_CHORUS     9
-#define PAGE_REVERB     10
-#define PAGE_TRACK      11
-#define PAGE_SEQ        12
-#define PAGE_LISTDEVICES 13
- 
-#define OSC1WFM  0
-#define OSC2WFM  1
-#define OSC2TRANSPOSE  2
-#define OSC_DETUNE  3
-#define AMPENV_ATTACK 4
-#define AMPENV_DECAY  5
-#define AMPENV_SUSTAIN 6
-#define AMPENV_RELEASE 7
-#define FILTERENV_ATTACK 8
-#define FILTERENV_DECAY  9
-#define FILTERENV_SUSTAIN 10
-#define FILTERENV_RELEASE 11
-#define CHORUS_LFORATE 12
-#define REVERB_SIZE 13
-#define REVERB_LODAMP 14
-#define REVERB_HIDAMP 15
-#define REVERB_DIFFUSION 16
-#define MIX_DRY 17
-#define MIX_CHORUS 18
-#define MIX_REVERB 19
-#define TRACK_LENGTH 20
-#define TRACK_SPEED 21
-#define TRACK_OUTPUT 22
-#define SEQ_BPM 23
-#define TRACK_CHANNEL 24
+#define PAGE_SONG         0
+#define PAGE_PATTERN      1
+#define PAGE_EVENT        2
+#define PAGE_TRACK        3
+#define PAGE_FILE         4
+#define PAGE_LISTDEVICES  5
+
+#define PATTERN_LENGTH          0
+#define PATTERN_SPEED           1
+#define PATTERN_EVENTLENGTHDEF  2 
+#define TRACK_OUTPUT            3
+#define SONG_BPM                4
+#define TRACK_CHANNEL           5
+#define EVENT_LENGTH            6
+#define TRACK_TRANSPOSESTATUS   7
 
 #define NR_PARAMETERS 25
 #define MAX_CHILDREN 8
@@ -90,6 +75,8 @@
 
 extern uint8_t LPdisplayMode;
 extern uint8_t currentTrack;
+extern uint8_t currentPattern;
+extern int16_t currentEvent;
 
 typedef float (* FPgetFloat)();
 typedef void (* FPsetFloat)(float);
@@ -119,7 +106,7 @@ struct parameters
 };
 
 extern audioBackend AudioBackend;
-extern Track *tracks[5];
+extern Track *tracks[NR_TRACKS];
 
 void setupUI();
 void showStartupScreen();

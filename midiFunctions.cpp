@@ -23,11 +23,13 @@ Track track1(1, "T1", LP_CYAN);
 Track track2(2, "T2", LP_PURPLE);
 Track track3(3, "T3", LP_PINK);
 Track track4(4, "T4", LP_ORANGE);
-const uint8_t nrTracks = 5;
+Track track5(5, "T5", LP_GREEN);
+Track track6(6, "T6", LP_DARKBLUE);
+const uint8_t nrTracks = 7;
 
-Track *tracks[nrTracks] = {&track0, &track1, &track2, &track3, &track4};
+Track *tracks[nrTracks] = {&track0, &track1, &track2, &track3, &track4, &track5, &track6};
 
-voice Voices[] = {voice(0), voice(1), voice(2), voice(3), voice(4), voice(5), voice(6), voice(7)};
+voice Voices[NR_VOICES] = {voice(0), voice(1), voice(2), voice(3)};
 
 void setupMidi()
 {
@@ -35,14 +37,17 @@ void setupMidi()
   delay(1000);
   myusb.begin();
   delay(100);
-  
-  //usbMIDI.setHandleNoteOn(deviceNoteOn);
-  //usbMIDI.setHandleNoteOff(deviceNoteOff);
+  usbMIDI.setHandleNoteOn(transposeMidiIn);
+  //usbMIDI.setHandleNoteOff(transposeMidiIn);
   //usbMIDI.setHandleControlChange(myControlChange);
   MIDI.begin(MIDI_CHANNEL_OMNI);
-  //MIDI.setHandleNoteOn(deviceNoteOn);
+  MIDI.setHandleNoteOn(transposeMidiIn);
   //MIDI.setHandleNoteOff(deviceNoteOff);
   //MIDI.setHandleControlChange(myControlChange);
+  midi1.setHandleNoteOn(transposeMidiIn);
+  midi2.setHandleNoteOn(transposeMidiIn);
+  midi3.setHandleNoteOn(transposeMidiIn);
+  midi4.setHandleNoteOn(transposeMidiIn);
   locateUsbComponents();
   LPinit();
 }
@@ -50,11 +55,9 @@ void setupMidi()
 void locateUsbComponents()
 {
   bool LPassigned = false;
-  bool localKeysAssigned = true;
   uint8_t LP_index = 0;
-  //uint8_t localKeys_index = 0;
   Serial.println("Searching for usb components...");
-  while (! (LPassigned == true && localKeysAssigned == true))
+  while (! (LPassigned == true))
   {
     for (uint8_t index = 0; index < CNT_DEVICES; index++)
     {
@@ -66,11 +69,6 @@ void locateUsbComponents()
         Serial.print(": PID 0x");
         Serial.print(productId, HEX);
         Serial.printf(" %s\n", productName);
-        //if (productId == 0x1111 || productId == 0x76)
-        //{
-        //  localKeys_index = index;
-        //  localKeysAssigned = true;
-        //}
         if (productId == 0x113)
         {
           LP_index = index;
@@ -81,7 +79,6 @@ void locateUsbComponents()
     }
   }
   configureLaunchPad(LP_index);
-  //configureLocalKeys(localKeys_index);
 }
 
 void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize)
@@ -95,27 +92,6 @@ void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize)
   else
   {
     for(uint8_t i = 0; i < 4; i++) buf[i] = na[i];
-  }
-}
-
-void configureLocalKeys(uint8_t driverIndex)
-{
-   switch(driverIndex)
-  {
-    case 0: // midi1
-      midi1.setHandleNoteOn(localKeysNoteOn);
-      midi1.setHandleNoteOff(localKeysNoteOff);
-      //midi1.setHandlePitchChange(localKeysPitchBend);
-      //midi1.setHandleControlChange(localKeysControlChange);
-      Serial.println("Initializing local keys @ port midi1");
-      break;
-    case 1: // midi2
-      midi2.setHandleNoteOn(localKeysNoteOn);
-      midi2.setHandleNoteOff(localKeysNoteOff);
-      //midi2.setHandlePitchChange(localKeysPitchBend);
-      //midi2.setHandleControlChange(localKeysControlChange);
-      Serial.println("Initializing local keys @ port midi2");  
-      break;
   }
 }
 
@@ -141,21 +117,7 @@ void configureLaunchPad(uint8_t driverIndex)
   LP1.setProgrammerMode();
 }
 
-void localKeysNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
-{
-  //Serial.print("Local keys note ON: ");
-  //Serial.println(note, DEC);
-  Voices[0].triggerSideChain(1);
-  Voices[1].noteOn(note, velocity);
-
-}
-
-void localKeysNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
-{
-  //Serial.print("Local keys note OFF: ");
-  //Serial.println(note, DEC);
-  Voices[1].noteOff(note, velocity);
-}
+void transposeMidiIn(uint8_t channel, uint8_t note, uint8_t velocity) { setTranspose(note - 36); }
 
 void deviceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
 {
@@ -199,25 +161,36 @@ void updateMidi()
   myusb.Task();
   midi1.read();
   midi2.read();
+  midi3.read();
+  midi4.read();
   usbMIDI.read();
   MIDI.read();
+}
+
+void sendMidiClock()
+{
+  MIDI.sendClock();
+  midi1.sendRealTime(usbMIDI.Clock);
+  midi2.sendRealTime(usbMIDI.Clock);
+  midi3.sendRealTime(usbMIDI.Clock);
+  midi4.sendRealTime(usbMIDI.Clock);
 }
 
 void LPNoteOn(byte channel, byte note, byte velocity)
 {
   //Serial.print("LP note ON: ");
   //Serial.println(note, DEC);
-  
-  if ( ( LPdisplayMode == DISPLAYMODE_SEQUENCER ) && ( sequencerEditMode == MODE_PATTERNEDIT ) )
+  uint8_t padColumn = LPnoteToPadColumn(note) + LP1.page * 8;
+  uint8_t ticksPerColumn =  24 / LP1.xZoomLevel;
+  uint16_t tickTemp = padColumn * ticksPerColumn;
+  uint8_t lowerRow = tracks[currentTrack]->lowerRow;
+  uint8_t padRow = LPnoteToPadRow(note);
+   
+  if ( ( LPdisplayMode == DISPLAYMODE_SEQUENCER ) && ( sequencerEditMode == MODE_PATTERNEDIT) && (velocity > 0) )
   {
-     if (velocity > 0) // Launchpad Mini sends velocity 127 at note on and 0 at off
-    {
-      uint8_t ticksPerColumn =  24 / LP1.xZoomLevel;
-      uint8_t lowerRow = tracks[currentTrack]->lowerRow;
-      uint8_t padColumn = LPnoteToPadColumn(note) + LP1.page * 8;
-      uint8_t padRow = LPnoteToPadRow(note);
+    // Add or remove events
+      
       uint8_t padState = 0;
-      uint16_t tickTemp = padColumn * ticksPerColumn;
       bool auditTrack = true; //sequencerState == STATE_STOPPED;
 
       if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + ticksPerColumn - 1 , lowerRow + padRow) == 0) // no matching events
@@ -231,10 +204,15 @@ void LPNoteOn(byte channel, byte note, byte velocity)
         padState = LP_OFF;
       }
       LP1.setPadColor(note, padState);
-    }
-  } // end, if DISPLAYMODE_SEQUENCER
+   } 
 
-
+  if ( ( LPdisplayMode == DISPLAYMODE_SEQUENCER ) && ( sequencerEditMode == MODE_EVENTEDIT ) && (velocity > 0) )
+  {
+    // Select existing events
+    currentEvent = tracks[currentTrack]->getEventId(tickTemp, lowerRow + padRow);
+    Serial.print("Event Id Selected: ");
+    Serial.println(currentEvent);
+  }
   
 //
 //  if (displayMode == DISPLAYMODE_PATTERNSELECT)
@@ -338,6 +316,8 @@ void LPControlChange(byte channel, byte control, byte value)
       case CCtrack3:
       case CCtrack4:
       case CCtrack5:
+      case CCtrack6:
+      case CCtrack7:
         currentTrack = (control - 9) / 10 - 2;
          break;
       case CCstartStop:

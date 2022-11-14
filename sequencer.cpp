@@ -14,9 +14,10 @@ uint8_t sequencerEditMode = MODE_PATTERNEDIT;
 IntervalTimer sequencerUpdateTimer;
 
 MIDIcallback outputNoteOnFunctions[] = {voiceNoteOn, serialMidiNoteOn, deviceNoteOn, midi1NoteOn, midi2NoteOn, midi3NoteOn, midi4NoteOn};
-MIDIcallback outputNoteOffFunctions[] = {voiceNoteOff, serialMidiNoteOff, deviceNoteOff, midi1NoteOff, midi1NoteOff, midi3NoteOff, midi4NoteOff};
+MIDIcallback outputNoteOffFunctions[] = {voiceNoteOff, serialMidiNoteOff, deviceNoteOff, midi1NoteOff, midi2NoteOff, midi3NoteOff, midi4NoteOff};
 String outputNames[] = {"Voice", "Serial", "USB device", "USB 1", "USB 2", "USB 3", "USB 4"};
 uint8_t nrOutputFunctions = sizeof(outputNoteOnFunctions)/sizeof(outputNoteOnFunctions[0]);
+const String noYesSelected[] = {"No", "Yes", "Selected"};
 
 void initSequencer()
 {
@@ -80,6 +81,39 @@ String getOutputEnum(uint8_t value) { return outputNames[value]; }
 
 float getTrackChannel() { return (float)(tracks[currentTrack]->getTrackChannel()); }
 void setTrackChannel(float channel) { tracks[currentTrack]->setTrackChannel((uint8_t)channel); }
+
+float getTrackLengthColumns() { return (float)(tracks[currentTrack]->getPatternLengthColumns(LP1.xZoomLevel)); }
+void setTrackLengthColumns(float columns) { tracks[currentTrack]->setPatternLengthColumns((uint16_t)columns, LP1.xZoomLevel); }
+
+float getEventLength()
+{
+  TrackEvent tempEvent = tracks[currentTrack]->getEvent(currentPattern, currentEvent);
+  return (float)(tempEvent.noteLength);
+}
+
+void setEventLength(float length)
+{
+  if (currentEvent != -1)
+  {
+    TrackEvent tempEvent = tracks[currentTrack]->getEvent(currentPattern, currentEvent);
+    tempEvent.noteLength = (uint16_t)length;
+    tracks[currentTrack]->setEvent(currentPattern, currentEvent, tempEvent);
+  }
+}
+
+float getTransposeStatus() { return (float)tracks[currentTrack]->trackRespondToTranspose; }
+void setTransposeStatus(float status) { tracks[currentTrack]->trackRespondToTranspose = (uint8_t)status; }
+String getNoYesSelectedEnum(uint8_t value) { return noYesSelected[constrain(value, 0, 2)]; }
+
+void setTranspose(int transpose)
+{
+  for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++)
+  {
+    if (tracks[trackId]->trackRespondToTranspose == 1) tracks[trackId]->transpose = transpose;
+    if (tracks[trackId]->trackRespondToTranspose == 2 && trackId == currentTrack ) tracks[trackId]->transpose = transpose;
+  }
+}
+
 
 void resetTracks()
 {

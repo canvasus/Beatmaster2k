@@ -11,7 +11,7 @@
 
 #define NR_SAMPLES 7
 
-#define NR_VOICES 8
+#define NR_VOICES 4
 #define NR_PATCHCORDS_VOICE 24
 
 struct voiceParameters

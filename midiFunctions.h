@@ -13,12 +13,9 @@ extern LaunchPad LP1;
 void setupMidi();
 void locateUsbComponents();
 void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize);
-void configureLocalKeys(uint8_t driverIndex);
 void configureLaunchPad(uint8_t driverIndex);
 void updateMidi();
-void localKeysNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void deviceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
-void localKeysNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 void myControlChange(uint8_t channel, uint8_t control, uint8_t value);
 
@@ -39,13 +36,17 @@ void LPNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void LPNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 void LPControlChange(byte channel, byte control, byte value);
 
+void transposeMidiIn(uint8_t channel, uint8_t note, uint8_t velocity);
+
+void sendMidiClock();
+
 #define CC_MODWHEEL 1
 
 //MIDI CC from LaunchPad
 
 // Right side pads (19 lowest)
-#define   hostBpmIncrease 89
-#define   hostBpmDecrease 79
+#define   CCtrack7        89
+#define   CCtrack6        79
 #define   CCtrack5        69
 #define   CCtrack4        59
 #define   CCtrack3        49
