@@ -19,6 +19,8 @@ String outputNames[] = {"Voice", "Serial", "USB device", "USB 1", "USB 2", "USB 
 uint8_t nrOutputFunctions = sizeof(outputNoteOnFunctions)/sizeof(outputNoteOnFunctions[0]);
 const String noYesSelected[] = {"No", "Yes", "Selected"};
 
+uint8_t arrangement[NR_TRACKS][NR_PATTERNS_IN_ARRANGEMENT];
+
 void initSequencer()
 {
    //testing

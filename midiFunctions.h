@@ -10,6 +10,9 @@
 
 extern LaunchPad LP1;
 
+#define LPMODE_SONG     0
+#define LPMODE_PATTERN  1
+
 void setupMidi();
 void locateUsbComponents();
 void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize);
@@ -59,8 +62,8 @@ void sendMidiClock();
 #define   CCscrollDown     92
 #define   CCpageDecrease   93
 #define   CCpageIncrease   94
-#define   CCpatternSelect  95
-#define   TBD96            96
+#define   CCsongMode       95
+#define   CCpatternMode    96
 #define   TBD97            97
 #define   CCeditMode       98
 

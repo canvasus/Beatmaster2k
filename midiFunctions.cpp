@@ -186,7 +186,7 @@ void LPNoteOn(byte channel, byte note, byte velocity)
   uint8_t lowerRow = tracks[currentTrack]->lowerRow;
   uint8_t padRow = LPnoteToPadRow(note);
    
-  if ( ( LPdisplayMode == DISPLAYMODE_SEQUENCER ) && ( sequencerEditMode == MODE_PATTERNEDIT) && (velocity > 0) )
+  if ( ( LPdisplayMode == LPMODE_PATTERN ) && ( sequencerEditMode == MODE_PATTERNEDIT) && (velocity > 0) )
   {
     // Add or remove events
       
@@ -206,7 +206,7 @@ void LPNoteOn(byte channel, byte note, byte velocity)
       LP1.setPadColor(note, padState);
    } 
 
-  if ( ( LPdisplayMode == DISPLAYMODE_SEQUENCER ) && ( sequencerEditMode == MODE_EVENTEDIT ) && (velocity > 0) )
+  if ( ( LPdisplayMode == LPMODE_PATTERN ) && ( sequencerEditMode == MODE_EVENTEDIT ) && (velocity > 0) )
   {
     // Select existing events
     currentEvent = tracks[currentTrack]->getEventId(tickTemp, lowerRow + padRow);
@@ -351,7 +351,7 @@ void LPControlChange(byte channel, byte control, byte value)
         LPpageIncrease();
         break;
       case CCeditMode:
-        // toggle pattern edit / event edit
+        // toggle between add/delete and edit modes
         if (sequencerEditMode == MODE_PATTERNEDIT)
         {
           LP1.setPadColor(CCeditMode, LP_BLUE);
@@ -362,7 +362,12 @@ void LPControlChange(byte channel, byte control, byte value)
           LP1.setPadColor(CCeditMode, LP_RED);
           sequencerEditMode = MODE_PATTERNEDIT;
         }
-
+        break;
+      case CCsongMode:
+        setLPsongMode();
+        break;
+      case CCpatternMode:
+        setLPpatternMode();
         break;
     }
   }

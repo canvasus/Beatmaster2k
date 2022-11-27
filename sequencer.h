@@ -8,6 +8,7 @@
 #define MODE_EVENTEDIT  1
 
 #define NR_TRACKS 7
+#define NR_PATTERNS_IN_ARRANGEMENT 8
 
 #define ticksPerBeat 24         // 1/4 * 1/24 = 1/96th resolution
 

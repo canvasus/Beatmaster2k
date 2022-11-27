@@ -9,7 +9,7 @@ uint8_t currentTrack = 0;
 uint8_t currentPattern = 0;
 int16_t currentEvent = -1;
 uint8_t currentPage = PAGE_SONG;
-uint8_t LPdisplayMode = DISPLAYMODE_SEQUENCER;
+uint8_t LPdisplayMode = LPMODE_PATTERN;
 
 //                      .pageType .name       .pageBack   .nrChildren  .children  .widget
 const page pages[] = {
@@ -85,32 +85,36 @@ void updateDisplayUI()
 {
   static uint8_t oldPage = PAGE_SONG;
   static bool firstCall = true;
+  static uint8_t forceVariableUpdate = false;
   if (pages[currentPage].pageType == PAGE_NAV) updateNavigationPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall);
-  else if (pages[currentPage].pageType == PAGE_PAR) updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall);
+  else if (pages[currentPage].pageType == PAGE_PAR) updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall, forceVariableUpdate);
   else handleSpecialPages(firstCall);
   firstCall = !(oldPage == currentPage);
   oldPage =  currentPage;
-  updateHeader(currentTrack, currentPattern, bpm, false);
+  forceVariableUpdate = updateHeader(currentTrack, currentPattern, bpm, false);
 }
 
-void updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCall)
+bool updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCall)
 {
   static uint8_t oldTrackNr = 255;
   static uint8_t oldPatternNr = 255;
   static uint8_t oldBpm = 255;
   static uint8_t oldPage = 255;
-  
+  static uint8_t oldLPpage = 255;
+  static uint8_t oldTrackColumns = 255;
   if (firstCall)
   {
     tft.fillRect(HEADER_X, HEADER_Y, HEADER_WIDTH, HEADER_HEIGHT, ILI9341_LIGHTGREY);
     tft.setTextColor(ILI9341_BLACK);
     tft.setFont(Arial_12);
-    tft.setCursor(HEADER_TEXT_X, 1* HEADER_OFFSET_Y);
+    tft.setCursor(HEADER_TEXT_X, 5 + 0* HEADER_OFFSET_Y);
     tft.print("TRK");
-    tft.setCursor(HEADER_TEXT_X, 3* HEADER_OFFSET_Y);
+    tft.setCursor(HEADER_TEXT_X, 5 + 2* HEADER_OFFSET_Y);
     tft.print("PTN");
-    tft.setCursor(HEADER_TEXT_X, 5* HEADER_OFFSET_Y);
+    tft.setCursor(HEADER_TEXT_X, 5 + 4* HEADER_OFFSET_Y);
     tft.print("BPM");
+    tft.setCursor(HEADER_TEXT_X, 5 + 7* HEADER_OFFSET_Y);
+    tft.print("PAG");
   }
   if (oldPage != currentPage)
   {
@@ -123,31 +127,49 @@ void updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCal
   }
   if (oldTrackNr != trackNr)
   {
-    tft.fillRect(HEADER_TEXT_X, 2* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
-    tft.setCursor(HEADER_TEXT_X, 2* HEADER_OFFSET_Y);
+    tft.fillRect(HEADER_TEXT_X, 5 + HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
+    tft.fillRect(HEADER_TEXT_X + HEADER_WIDTH - 16, HEADER_OFFSET_Y, 16, HEADER_OFFSET_Y - 16, lpColor2tftColor(tracks[currentTrack]->color));
+    tft.setCursor(HEADER_TEXT_X + 16, 5 + HEADER_OFFSET_Y);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
     tft.print(trackNr);
     oldTrackNr = trackNr;
+    return true;
   }
   if (oldPatternNr != patternNr)
   {
-    tft.fillRect(HEADER_TEXT_X, 4* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
-    tft.setCursor(HEADER_TEXT_X, 4* HEADER_OFFSET_Y);
+    tft.fillRect(HEADER_TEXT_X, 5 + 3* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X, 5 + 3* HEADER_OFFSET_Y);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
     tft.printf("%02d", patternNr);
     oldPatternNr = patternNr;
+    return true;
   }
   if (oldBpm != bpm)
   {
-    tft.fillRect(HEADER_TEXT_X, 6* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
-    tft.setCursor(HEADER_TEXT_X, 6* HEADER_OFFSET_Y);
+    tft.fillRect(HEADER_TEXT_X, 5 + 5* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X, 5 + 5* HEADER_OFFSET_Y);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
     tft.printf("%03d", bpm);
     oldBpm = bpm;
   }
+  if ( (oldLPpage != LP1.page) || (oldTrackColumns !=  tracks[currentTrack]->getPatternLengthColumns(24 / LP1.xZoomLevel)))
+  {
+    uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
+    uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn);
+    uint8_t maxPages = trackColumns/8 + !!(trackColumns%8);
+    tft.fillRect(HEADER_TEXT_X, 5 + 8* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X, 5 + 8* HEADER_OFFSET_Y);
+    tft.setFont(Arial_12);
+    tft.setTextColor(ILI9341_BLACK);
+    tft.printf("%02d/%02d", LP1.page + 1, maxPages);
+    oldLPpage = LP1.page;
+    oldTrackColumns = trackColumns;
+  }
+  
+  return false;
 }
 
 void updateNavigationPage(const uint8_t * pageArray, uint8_t nrButtons, bool firstCall)
@@ -203,12 +225,16 @@ void drawMenuButton(uint8_t index, String text, bool selected)
 }
 
 
-void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParameters, bool firstCall)
+void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParameters, bool firstCall, bool forceVariableUpdate)
 {
   static int16_t selectedButton = 0;
   float variables[nrParameters];
 
-  for (uint8_t i = 0; i < nrParameters; i++) variables[i] = getValue(parameterArray[i]);
+  for (uint8_t i = 0; i < nrParameters; i++)
+  {
+    variables[i] = getValue(parameterArray[i]);
+    if (forceVariableUpdate && !firstCall) updateParameterRow(i, parameterArray[i]);
+  }
   
   if (firstCall)
   {
@@ -244,6 +270,7 @@ void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParamet
       else if (pages[currentPage].widget == W_POT) drawPotWidget(selectedButton, parameterArray[selectedButton], true, false);
     }
   }
+  
   if (updateButton(1)) currentPage = pages[currentPage].pageBack;
 }
 
@@ -269,7 +296,7 @@ void updateParameterRow(uint8_t index, uint8_t parameter)
    uint8_t row = index % 4;
    uint8_t x1 = VAR_NAME_WIDTH + BUTTON_PADDING;
    uint8_t y1 = PAGEINDICATOR_HEIGHT + BUTTON_PADDING + row * (BUTTON_HEIGHT + BUTTON_PADDING);
-   tft.fillRect(x1 + 1, y1 + 1, VAR_VALUE_WIDTH - 2, BUTTON_HEIGHT - 2, ILI9341_BLACK);
+   tft.fillRect(x1 + 2, y1 + 2, VAR_VALUE_WIDTH - 4, BUTTON_HEIGHT - 4, ILI9341_BLACK);
    tft.drawRect(x1 + 1 , y1 + 1, VAR_VALUE_WIDTH - 2, BUTTON_HEIGHT - 2, ILI9341_BLUE);
    tft.setCursor(x1 + 8, y1 + 5);
    tft.setTextColor(ILI9341_WHITE);
@@ -366,6 +393,7 @@ void LPinit()
 {
   LP1.setPadColor(CCstartStop, LP_RED);
   LP1.setPadColor(CCeditMode, LP_RED);
+  LP1.setPadColor(CCsongMode, LP_GREEN);
 }
 
 void updateLaunchpadUI()
@@ -466,11 +494,42 @@ void LPsetColumnFromTrackData(uint8_t padColumn)
   LP1.setMultiplePadColorState(padStateArray, 24);
 }
 
+void setLPsongMode()
+{
+  uint8_t padStateArray[6] = {0, CCsongMode, LP_GREEN, 0, CCpatternMode, LP_OFF};
+  LP1.setMultiplePadColorState(padStateArray, 6);
+  LPdisplayMode = LPMODE_SONG;
+}
+
+void setLPpatternMode()
+{
+  uint8_t padStateArray[6] = {0, CCsongMode, LP_OFF, 0, CCpatternMode, LP_GREEN};
+  LP1.setMultiplePadColorState(padStateArray, 6);
+  LPdisplayMode = LPMODE_PATTERN;
+}
+
 void LPdisplayPatternPage(bool firstCall)
 {
   
+  
 }
 
+uint16_t lpColor2tftColor(uint8_t lpColor)
+{
+  switch (lpColor)
+  {
+    case LP_RED: return TFT_RED;
+    case LP_BLUE: return TFT_BLUE;
+    case LP_GREEN: return TFT_GREEN;
+    case LP_PURPLE: return TFT_PURPLE;
+    case LP_CYAN: return TFT_CYAN;
+    case LP_ORANGE: return TFT_ORANGE;
+    case LP_PINK: return TFT_PINK;
+    case LP_GHOST: return TFT_GHOST;
+    case LP_DARKBLUE: return TFT_DARKBLUE;
+    default: return 0;
+  }
+}
 
 // HARDWARE CONTROLS
 // ********************************************
