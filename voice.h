@@ -1,17 +1,17 @@
 #pragma once
 
 #include <Audio.h>
-#include "src/samples/x_kick1.h"
-#include "src/samples/AudioSampleBd88.h"
-#include "src/samples/AudioSampleSd88.h"
-#include "src/samples/AudioSampleSidsd.h"
-#include "src/samples/AudioSample8o8ch1.h"
-#include "src/samples/AudioSampleLastninja2.h"
+//#include "src/samples/x_kick1.h"
+//#include "src/samples/AudioSampleBd88.h"
+//#include "src/samples/AudioSampleSd88.h"
+//#include "src/samples/AudioSampleSidsd.h"
+//#include "src/samples/AudioSample8o8ch1.h"
+//#include "src/samples/AudioSampleLastninja2.h"
 #include "src/samples/AudioSampleKick.h"
 
 #define NR_SAMPLES 7
 
-#define NR_VOICES 4
+#define NR_VOICES 1
 #define NR_PATCHCORDS_VOICE 24
 
 struct voiceParameters

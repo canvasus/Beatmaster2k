@@ -10,12 +10,14 @@ Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
    _cuedEventIndex        = 0;
    _midiChannel           = trackId;
    _defaultNoteLengthTicks = 8 ; //(4 / 96 = <1/16)
+   _defaultVelocity       = 127;
    
    _noteOn_cb = nullptr;
    _noteOff_cb = nullptr;
    outputId = 0;
    trackRespondToTranspose = false;
    trackMuted = false;
+   _tickFlag = 0;
 
    for (int patternId = 0; patternId < NR_PATTERNS; patternId++)
    {
@@ -26,6 +28,7 @@ Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
     _patterns[patternId].patternId = patternId;
     _patterns[patternId].patternLengthTicks = 8 * RESOLUTION - 1; // 4 * 1/4th, (previously set to _trackLengthTicks)
     _patterns[patternId].patternStatus = PATTERN_EMPTY;
+    _patterns[patternId].patternSpeed = PATTERN_SPEED_x1;
    }
 
    for (int i = 0; i < NR_PLAYED_EVENTS;i++) { _playedEvents[i] = empty_trackEvent; }
@@ -40,16 +43,70 @@ Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
 
 uint8_t Track::getId() { return _trackId; }
 
+void Track::update()
+{
+//  if (_currentTrackTick > _patterns[_currentPattern].patternLengthTicks) //_trackLengthTicks
+//  {
+//    _currentTrackTick = 0;
+//    loopResetTrack();
+//  }
+//  if (!trackMuted && ( _tickFlag > 0 )) _triggerEvents();
+//  if (_tickFlag > 0) _handleAutoNoteOff();
+//  _tickFlag = 0;
+}
+
 void Track::tickTrack() // sent from main sequencer at defined tick rate
 {
-  _currentTrackTick = _currentTrackTick + 1;
+  _tickFlag = _tickPrescaler();
+  _currentTrackTick = _currentTrackTick + _tickFlag;
+  
   if (_currentTrackTick > _patterns[_currentPattern].patternLengthTicks) //_trackLengthTicks
   {
     _currentTrackTick = 0;
     loopResetTrack();
   }
-  _triggerEvents();
+ if (!trackMuted) _triggerEvents();
   _handleAutoNoteOff();
+}
+
+uint16_t Track::_tickPrescaler()
+{
+  static uint8_t counter = 0;
+  switch (_patterns[_currentPattern].patternSpeed)
+  {
+    case PATTERN_SPEED_x1: return 1;
+    
+    case PATTERN_SPEED_x2: return 2;
+    
+    case PATTERN_SPEED_x1_4:
+      counter++;
+      if (counter >= 4)
+      {
+        counter = 0;
+        return 1;
+      }
+      else return 0;
+
+    case PATTERN_SPEED_x1_3:
+      counter++;
+      if (counter >= 3)
+      {
+        counter = 0;
+        return 1;
+      }
+      else return 0;
+   
+    case PATTERN_SPEED_x1_2:
+      counter++;
+      if (counter >= 2)
+      {
+        counter = 0;
+        return 1;
+      }
+      else return 0;
+    
+    default: return 0;
+  }
 }
 
 void Track::loopResetTrack()
@@ -76,8 +133,18 @@ void Track::_triggerEvents()
     if(_noteOn_cb &&  (_patterns[_currentPattern].trackEvents[index].noteValue + transpose < 128))
     {
       //Serial.println("called midicb");
-      _noteOn_cb(_midiChannel, _patterns[_currentPattern].trackEvents[index].noteValue + transpose, _patterns[_currentPattern].trackEvents[index].noteVelocity);
-      _copyToPlayedBuffer(_patterns[_currentPattern].trackEvents[index]);
+      if (_midiChannel == MIDICH_NOTEVALUE)
+      {
+        uint8_t noteValue = _patterns[_currentPattern].trackEvents[index].noteValue + transpose;
+        uint8_t channel = constrain(noteValue, 1, 16);
+        _noteOn_cb(channel, _patterns[_currentPattern].trackEvents[index].noteValue + transpose, _patterns[_currentPattern].trackEvents[index].noteVelocity);
+        _copyToPlayedBuffer(_patterns[_currentPattern].trackEvents[index]);
+      }
+      else
+      {
+        _noteOn_cb(_midiChannel, _patterns[_currentPattern].trackEvents[index].noteValue + transpose, _patterns[_currentPattern].trackEvents[index].noteVelocity);
+        _copyToPlayedBuffer(_patterns[_currentPattern].trackEvents[index]);
+      }
     }
     index = index + 1;
     _updateCuedEventIndex();
@@ -103,13 +170,14 @@ void Track::_handleAutoNoteOff()
   {
     if((_playedEvents[index].header == EVENT_MIDI_PLAYED) && (_playedEvents[index].noteLength == 0))
     {
-      if(_noteOff_cb) _noteOff_cb(_midiChannel,_playedEvents[index].noteValue, _playedEvents[index].noteVelocity);
+      if(_noteOff_cb) _noteOff_cb(_midiChannel,_playedEvents[index].noteValue, 0);
       _playedEvents[index] = empty_trackEvent;
       //printPlayedArray();
     }
     else if (_playedEvents[index].header == EVENT_MIDI_PLAYED)
     {
       _playedEvents[index].noteLength = _playedEvents[index].noteLength - 1;
+      //_playedEvents[index].noteLength = _playedEvents[index].noteLength - _tickFlag;
     }
   }
 }
@@ -135,10 +203,14 @@ uint16_t Track::getPatternLengthBeats() { return ( (_patterns[_currentPattern].p
 uint16_t Track::getPatternLengthColumns(uint16_t ticksPerColumn) {return ( (_patterns[_currentPattern].patternLengthTicks + 1) / RESOLUTION16TH); }
 void     Track::setPatternLengthColumns(uint16_t length, uint16_t ticksPerColumn) { _patterns[_currentPattern].patternLengthTicks = length * RESOLUTION16TH - 1; }
 
+void     Track::setPatternSpeed(uint8_t patternId, uint8_t speed) { _patterns[patternId].patternSpeed = speed; }
+uint8_t  Track::getPatternSpeed(uint8_t patternId) { return _patterns[_currentPattern].patternSpeed; }
+
 uint16_t Track::getCurrentBeat() { return _currentTrackTick / RESOLUTION;}
 uint16_t Track::getCurrentColumn(uint16_t ticksPerColumn) { return _currentTrackTick / ticksPerColumn; }
 uint16_t Track::getTrackDefaultNoteLengthTicks() { return _defaultNoteLengthTicks; }
 void Track::setTrackDefaultNoteLengthTicks(uint16_t noteLength) { _defaultNoteLengthTicks = noteLength; }
+uint8_t Track::getTrackDefaultVelocity() { return _defaultVelocity; }
 
 void Track::_updateCuedEventIndex()
 {
@@ -268,8 +340,9 @@ void Track::setPattern(uint8_t patternId, Pattern inputPattern) { _patterns[patt
 
 void Track::setPatternId(uint8_t patternId)
 {
+   Serial.println(F("track.cpp function"));
   _currentPattern = patternId;
-  _patterns[_cuedPattern].patternStatus = PATTERN_ACTIVE;
+  _patterns[_currentPattern].patternStatus = PATTERN_ACTIVE;
 }
 
 void Track::cuePatternId(uint8_t patternId)

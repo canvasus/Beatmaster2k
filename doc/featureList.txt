@@ -1,0 +1,19 @@
+Pattern management
+ Select ptn
+ Clear ptn
+ Copy ptn
+ Paste ptn
+
+Arrangement
+ Add/remove ptns
+
+Event edit
+ Change velocity
+ Default velocity
+ 
+Mute tracks
+
+Internal voices?
+ Play samples?
+ 
+ 

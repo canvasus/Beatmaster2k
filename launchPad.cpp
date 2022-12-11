@@ -20,7 +20,7 @@ void LaunchPad::setProgrammerMode()
 {
   uint8_t sysexData[] = {0, 32, 41, 2, 13, 0, 127};
   _midiDevice->sendSysEx(7, sysexData, false);
-  Serial.println("Setting Launchpad to Programmer Mode");
+  //Serial.println(F("Setting Launchpad to Programmer Mode"));
 }
 
 void LaunchPad::setColumnColor(uint8_t column, uint8_t color)

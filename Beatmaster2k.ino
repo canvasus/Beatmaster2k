@@ -7,7 +7,7 @@ audioBackend AudioBackend;
 
 void setup()
 {
-  Serial.println("START");
+  Serial.println(F("START"));
   if (CrashReport) Serial.print(CrashReport);
   setupUI();
   AudioBackend.setupAudio();
@@ -19,4 +19,5 @@ void loop()
 {
   updateMidi();
   updateUI();
+  //updateSequencer();
 }

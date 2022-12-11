@@ -20,12 +20,20 @@
 
 #define NR_PATTERNS         8
 
+#define MIDICH_NOTEVALUE 17
+
+#define PATTERN_SPEED_x1_4   0
+#define PATTERN_SPEED_x1_3   1
+#define PATTERN_SPEED_x1_2   2
+#define PATTERN_SPEED_x1     3
+#define PATTERN_SPEED_x2     4
+
 const uint8_t scale_major[8] = {0, 2, 4, 5, 7, 9, 11, 12};
 const uint8_t scale_minor[8] = {0, 2, 3, 5, 7, 8, 10, 12};
 
 struct trackEvent{
     uint8_t       header;
-    uint16_t      tick; // --> index
+    uint16_t      tick;
     uint8_t       noteValue;
     uint8_t       noteVelocity;
     uint16_t      noteLength;
@@ -62,11 +70,14 @@ class Track {
     uint8_t       _currentPattern;
     uint8_t       _cuedPattern;
 
+    uint8_t       _tickFlag;
+
     // Track configuration
 
     
     uint8_t       _midiChannel;
     uint8_t       _defaultNoteLengthTicks;
+    uint8_t       _defaultVelocity;
     
     MIDIcallback  _noteOn_cb;
     MIDIcallback  _noteOff_cb;
@@ -77,7 +88,8 @@ class Track {
     void          _handleAutoNoteOff();
     void          _copyToPlayedBuffer(trackEvent event);
     void          _auditEvent(trackEvent event);
-    
+    uint16_t      _tickPrescaler();
+      
   public:
     Track(uint8_t trackId, String trackName, uint8_t trackColor);
     String        name;
@@ -87,6 +99,8 @@ class Track {
     uint8_t       trackRespondToTranspose;
     bool          trackMuted;
     uint8_t       lowerRow;
+
+    void          update();
    
     uint8_t       getId();
     uint16_t      getEventTick(uint8_t eventId);
@@ -98,6 +112,7 @@ class Track {
     void          setPatternLengthColumns(uint16_t length, uint16_t ticksPerColumn);
     uint16_t      getTrackDefaultNoteLengthTicks();
     void          setTrackDefaultNoteLengthTicks(uint16_t noteLength);
+    uint8_t       getTrackDefaultVelocity();
     uint16_t      getCurrentBeat();
     uint16_t      getCurrentColumn(uint16_t ticksPerColumn);
     
@@ -121,7 +136,11 @@ class Track {
     Pattern       getPattern(uint8_t patternId);
     void          setPattern(uint8_t patternId, Pattern inputPattern);
 
+    void          setPatternSpeed(uint8_t patternId, uint8_t speed);
+    uint8_t       getPatternSpeed(uint8_t patternId);
+
     void          tickTrack(); // sent from main sequencer at defined tick rate 1/96th
+    
     void          loopResetTrack();
     void          flushPlayedBuffer();
     void          printEventArray(uint8_t lastIndex);

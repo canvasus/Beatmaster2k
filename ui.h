@@ -13,20 +13,31 @@
 
 #define SCREEN_YRES 240
 #define SCREEN_XRES 320
-#define BUTTON_HEIGHT 30
+#define BUTTON_HEIGHT 26
 #define BUTTON_WIDTH  150
 #define BUTTON_PADDING 5
 #define VAR_NAME_WIDTH 100
 #define VAR_VALUE_WIDTH 155
+#define NAV_AREA_HEIGHT 170
 
 #define HEADER_X        270
 #define HEADER_Y        0
 #define HEADER_WIDTH    50
-#define HEADER_HEIGHT   SCREEN_YRES
+#define HEADER_HEIGHT   170
 #define HEADER_TEXT_X   274
 #define HEADER_OFFSET_Y 25  
 #define PAGEINDICATOR_HEIGHT 30 
 #define PAGEINDICATOR_WIDTH 140 
+
+#define MAIN_BG_COLOR ILI9341_NAVY
+#define PAGEINDICATOR_COLOR ILI9341_BLUE
+
+#define LPCOPY_XPOS 5
+#define LPCOPY_YPOS 200
+#define LPCOPY_BOXDIM 4
+#define LPCOPY_BOX_OUTLINE_COLOR ILI9341_BLACK
+#define LPCOPY_BOX_SELECTED_COLOR ILI9341_LIGHTGREY
+
 
 #define TFT_DC  9
 #define TFT_CS 10
@@ -59,8 +70,9 @@
 #define TRACK_CHANNEL           5
 #define EVENT_LENGTH            6
 #define TRACK_TRANSPOSESTATUS   7
+#define PATTERN_NR              8
 
-#define NR_PARAMETERS 25
+#define NR_PARAMETERS 9
 #define MAX_CHILDREN 8
 #define PAGE_NAV 0
 #define PAGE_PAR 1
@@ -72,6 +84,9 @@
 
 #define DISPLAYMODE_SEQUENCER      0
 #define DISPLAYMODE_PATTERNSELECT  1
+
+#define LPMODE_SONG     0
+#define LPMODE_PATTERN  1
 
 extern uint8_t LPdisplayMode;
 extern uint8_t currentTrack;
@@ -111,7 +126,6 @@ extern Track *tracks[NR_TRACKS];
 void setupUI();
 void showStartupScreen();
 
-
 void updateUI();
 void updateDisplayUI();
 void updateLaunchpadUI();
@@ -126,14 +140,26 @@ void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParamet
 void drawParameterRow(uint8_t index, uint8_t parameter, bool selected);
 void updateParameterRow(uint8_t index, uint8_t parameter);
 
-void drawPotWidget(uint8_t index, uint8_t parameter, bool selected, bool drawStatics);
-void updatePotWidget(uint8_t index, uint8_t parameter);
+//void drawPotWidget(uint8_t index, uint8_t parameter, bool selected, bool drawStatics);
+//void updatePotWidget(uint8_t index, uint8_t parameter);
 
 float getValue(uint8_t parameter);
 void updateValue(uint8_t parameter, float value);
 
 void handleSpecialPages(bool firstCall);
 void displayDevicePage(bool firstCall);
+
+void LPcopy_update(bool firstCall, bool forceVariableUpdate);
+void LPcopy_clearArea();
+void LPcopy_drawBackground(uint8_t nrPages);
+void LPcopy_setSelectedPage();
+void LPcopy_updateSingleEvent_converter(uint8_t note, uint8_t padState);
+void LPcopy_updateSingleEvent(uint8_t page, uint8_t column, uint8_t row, uint8_t LPcolor);
+void LPcopy_updateAllEvents();
+void LPcopy_updateColumn(uint8_t column);
+void LPcopy_setStepIndicator();
+void LPcopy_setColumnColor(uint8_t page, uint8_t column, uint8_t LPcolor);
+
 
 void LPinit();
 void LPsetStepIndicator();
@@ -143,9 +169,13 @@ void LPscrollUp();
 void LPscrollDown();
 void LPsetPageFromTrackData();
 void LPsetColumnFromTrackData(uint8_t padColumn);
-void LPdisplayPatternPage(bool firstCall);
+//void LPdisplayPatternPage(bool firstCall);
 void setLPsongMode();
 void setLPpatternMode();
+void LPsetTrackButtonsSongMode();
+void LPtoggleMute(uint8_t control);
+void LPsetPageFromArrangementData();
+void LPsetTrackRowFromArrangementData(uint8_t trackId);
 
 uint16_t lpColor2tftColor(uint8_t lpColor);
 
@@ -163,6 +193,8 @@ void updateMcp();
 #define TFT_PINK   ILI9341_PINK
 #define TFT_GHOST  0x1111
 #define TFT_DARKBLUE ILI9341_NAVY
+#define TFT_YELLOW ILI9341_YELLOW
+#define TFT_OFF 0x31A6
 
 //#define ILI9341_BLACK       0x0000      /*   0,   0,   0 */
 //#define ILI9341_NAVY        0x000F      /*   0,   0, 128 */

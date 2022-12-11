@@ -23,38 +23,39 @@ uint8_t arrangement[NR_TRACKS][NR_PATTERNS_IN_ARRANGEMENT];
 
 void initSequencer()
 {
-   //testing
   for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++)
   {
-    tracks[trackId]->setHandleNoteOn(outputNoteOnFunctions[0]);
-    tracks[trackId]->setHandleNoteOff(outputNoteOffFunctions[0]);
-    tracks[trackId]->lowerRow = 48;
-    tracks[trackId]->setPatternLengthBeats(4);
+    for (uint8_t arrIndex = 0; arrIndex < NR_PATTERNS_IN_ARRANGEMENT; arrIndex++) arrangement[trackId][arrIndex] = ARR_NO_PATTERN;
   }
-  sequencerUpdateTimer.begin(updateSequencer, oneTickUs); 
+  
+  //sequencerUpdateTimer.begin(updateSequencer, oneTickUs); 
+  sequencerUpdateTimer.begin(tickTracks, oneTickUs); 
+}
+
+void tickTracks()
+{
+  if (sequencerState == STATE_RUNNING)
+  {
+    //AudioNoInterrupts(); 
+    for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->tickTrack();
+    //AudioInterrupts();
+  }
 }
 
 void updateSequencer()
 {
-  if (sequencerState == STATE_RUNNING)
-  {
-    AudioNoInterrupts(); 
-    for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->tickTrack();
-    AudioInterrupts(); 
-  }
+   for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->update();
 }
 
 void startSequencer()
 {
-   //MIDI.sendStart();
-   //sendMIDIclock();
+   //sendMidiStart();
    sequencerState = STATE_RUNNING;
-   //columnTimer = 0;
 }
 
 void stopSequencer()
 {
-  //MIDI.sendStop();
+  //sendMidiStop();
   sequencerState = STATE_STOPPED;
   sequencerStep = -1;
   resetTracks();
@@ -78,14 +79,38 @@ void setTrackOutput(float value)
   tracks[currentTrack]->outputId = outputIndex;
 }
 
+
+void setCurrentTrack(uint8_t track)
+{
+  currentTrack = track;
+  LP1.page = 0; //min(LP1.page, maxPages);
+}
+
 float getTrackOutput() { return tracks[currentTrack]->outputId; }
 String getOutputEnum(uint8_t value) { return outputNames[value]; }
 
 float getTrackChannel() { return (float)(tracks[currentTrack]->getTrackChannel()); }
 void setTrackChannel(float channel) { tracks[currentTrack]->setTrackChannel((uint8_t)channel); }
+String get0_16_note(uint8_t channel)
+{
+  if (channel < 17) return String(channel);
+  else return "NoteVal";
+}
 
 float getTrackLengthColumns() { return (float)(tracks[currentTrack]->getPatternLengthColumns(LP1.xZoomLevel)); }
 void setTrackLengthColumns(float columns) { tracks[currentTrack]->setPatternLengthColumns((uint16_t)columns, LP1.xZoomLevel); }
+
+float getTrackDefLength() { return (float)(tracks[currentTrack]->getTrackDefaultNoteLengthTicks()); }
+void setTrackDefLength(float length) { tracks[currentTrack]->setTrackDefaultNoteLengthTicks((uint16_t)length); }
+
+float getTrackPatternNr() { return (float)(tracks[currentTrack]->getActivePatternId()); }
+
+void setTrackPatternNr(float patternNr)
+{
+  if (sequencerState == STATE_STOPPED) tracks[currentTrack]-> setPatternId((uint8_t)patternNr);
+  if (sequencerState == STATE_RUNNING) tracks[currentTrack]-> cuePatternId((uint8_t)patternNr);
+  currentPattern = patternNr;
+}
 
 float getEventLength()
 {
@@ -116,6 +141,31 @@ void setTranspose(int transpose)
   }
 }
 
+void setPatternSpeed(float speed)
+{
+  uint8_t patternId = tracks[currentTrack]->getActivePatternId();
+  tracks[currentTrack]->setPatternSpeed(patternId, (uint8_t)speed);
+}
+
+float getPatternSpeed()
+{
+  uint8_t patternId = tracks[currentTrack]->getActivePatternId();
+  return (float)tracks[currentTrack]->getPatternSpeed(patternId);
+}
+
+
+String getPatternSpeedEnum(uint8_t value)
+{
+  switch (value)
+  {
+    case PATTERN_SPEED_x1_4: return "x1/4";
+    case PATTERN_SPEED_x1_3: return "x1/3";
+    case PATTERN_SPEED_x1_2: return "x1/2";
+    case PATTERN_SPEED_x1: return "x1";
+    case PATTERN_SPEED_x2: return "x2";
+    default: return "ERR";
+  }
+}
 
 void resetTracks()
 {

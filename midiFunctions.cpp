@@ -7,12 +7,13 @@ MIDIDevice_BigBuffer midi1(myusb); // Launchpad or Midi device
 MIDIDevice_BigBuffer midi2(myusb); // Launchpad or Midi device
 MIDIDevice_BigBuffer midi3(myusb); // Launchpad or Midi device
 MIDIDevice_BigBuffer midi4(myusb); // Launchpad or Midi device
+MIDIDevice_BigBuffer midi5(myusb); // Launchpad or Midi device
 LaunchPad LP1 = LaunchPad(1);
 
-USBDriver *drivers[] = {&midi1, &midi2, &midi3, &midi4};
+MIDIDevice_BigBuffer * midiDrivers[5] = {&midi1, &midi2, &midi3, &midi4, &midi5};
+USBDriver *drivers[] = {&midi1, &midi2, &midi3, &midi4, &midi5};
+const char * driver_names[5] = {"midi1", "midi2", "midi3", "midi4", "midi5"};
 #define CNT_DEVICES (sizeof(drivers)/sizeof(drivers[0])) 
-bool driver_active[CNT_DEVICES] = {false, false, false, false};
-const char * driver_names[CNT_DEVICES] = {"midi1", "midi2", "midi3", "midi4"};
 
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
@@ -24,20 +25,21 @@ Track track2(2, "T2", LP_PURPLE);
 Track track3(3, "T3", LP_PINK);
 Track track4(4, "T4", LP_ORANGE);
 Track track5(5, "T5", LP_GREEN);
-Track track6(6, "T6", LP_DARKBLUE);
+Track track6(6, "T6", LP_YELLOW);
 const uint8_t nrTracks = 7;
 
 Track *tracks[nrTracks] = {&track0, &track1, &track2, &track3, &track4, &track5, &track6};
 
-voice Voices[NR_VOICES] = {voice(0), voice(1), voice(2), voice(3)};
+//voice Voices[NR_VOICES] = {voice(0), voice(1), voice(2), voice(3)};
+voice Voices[NR_VOICES] = {voice(0)};
 
 void setupMidi()
 {
-  Serial.println("MIDI SETUP");
+  Serial.println(F("MIDI SETUP"));
   delay(1000);
   myusb.begin();
   delay(100);
-  usbMIDI.setHandleNoteOn(transposeMidiIn);
+  //usbMIDI.setHandleNoteOn(transposeMidiIn);
   //usbMIDI.setHandleNoteOff(transposeMidiIn);
   //usbMIDI.setHandleControlChange(myControlChange);
   MIDI.begin(MIDI_CHANNEL_OMNI);
@@ -48,6 +50,7 @@ void setupMidi()
   midi2.setHandleNoteOn(transposeMidiIn);
   midi3.setHandleNoteOn(transposeMidiIn);
   midi4.setHandleNoteOn(transposeMidiIn);
+  midi5.setHandleNoteOn(transposeMidiIn);
   locateUsbComponents();
   LPinit();
 }
@@ -56,7 +59,7 @@ void locateUsbComponents()
 {
   bool LPassigned = false;
   uint8_t LP_index = 0;
-  Serial.println("Searching for usb components...");
+  Serial.println(F("Searching for usb components..."));
   while (! (LPassigned == true))
   {
     for (uint8_t index = 0; index < CNT_DEVICES; index++)
@@ -97,23 +100,12 @@ void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize)
 
 void configureLaunchPad(uint8_t driverIndex)
 {
-  switch(driverIndex)
-  {
-    case 0: // midi1
-      LP1.begin(&midi1);
-      midi1.setHandleNoteOn(LPNoteOn);
-      midi1.setHandleNoteOff(LPNoteOff);  
-      midi1.setHandleControlChange(LPControlChange);
-      Serial.println("Initializing LP @ port midi1");
-      break;
-    case 1: // midi2
-      LP1.begin(&midi2);
-      midi2.setHandleNoteOn(LPNoteOn);
-      midi2.setHandleNoteOff(LPNoteOff);  
-      midi2.setHandleControlChange(LPControlChange);
-      Serial.println("Initializing LP @ port midi2");
-      break;
-  }
+  LP1.begin(midiDrivers[driverIndex]);
+  midiDrivers[driverIndex]->setHandleNoteOn(LPNoteOn);
+  midiDrivers[driverIndex]->setHandleNoteOff(LPNoteOff);
+  midiDrivers[driverIndex]->setHandleControlChange(LPControlChange);
+  Serial.print(F("Initializing LP @ port: "));
+  Serial.println(driver_names[driverIndex]);
   LP1.setProgrammerMode();
 }
 
@@ -121,15 +113,13 @@ void transposeMidiIn(uint8_t channel, uint8_t note, uint8_t velocity) { setTrans
 
 void deviceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
 {
-  Serial.print("Device send note ON: ");
-  Serial.println(note, DEC);
-  //usbMIDI.sendNoteOn(note, velocity, channel);
-  
+  //Serial.printf("Device send, type %d, channel %d, note %d, velocity %d\n", usbMIDI.NoteOn, channel, note, velocity);
+  usbMIDI.sendNoteOn(note, velocity, channel);
 }
 
 void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
 {
-  //usbMIDI.sendNoteOff(note, velocity, channel);
+  usbMIDI.sendNoteOff(note, 127, channel);
 }
 
 void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) { Voices[channel].noteOn(note, velocity); }
@@ -170,11 +160,22 @@ void updateMidi()
 void sendMidiClock()
 {
   MIDI.sendClock();
-  midi1.sendRealTime(usbMIDI.Clock);
-  midi2.sendRealTime(usbMIDI.Clock);
-  midi3.sendRealTime(usbMIDI.Clock);
-  midi4.sendRealTime(usbMIDI.Clock);
+  //midi1.sendRealTime(usbMIDI.Clock);
+  //midi2.sendRealTime(usbMIDI.Clock);
+  //midi3.sendRealTime(usbMIDI.Clock);
+  //midi4.sendRealTime(usbMIDI.Clock);
 }
+
+void sendMidiStart()
+{
+  MIDI.sendStart();
+}
+
+void sendMidiStop()
+{
+  MIDI.sendStop();
+}
+
 
 void LPNoteOn(byte channel, byte note, byte velocity)
 {
@@ -189,13 +190,12 @@ void LPNoteOn(byte channel, byte note, byte velocity)
   if ( ( LPdisplayMode == LPMODE_PATTERN ) && ( sequencerEditMode == MODE_PATTERNEDIT) && (velocity > 0) )
   {
     // Add or remove events
-      
       uint8_t padState = 0;
       bool auditTrack = true; //sequencerState == STATE_STOPPED;
 
       if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + ticksPerColumn - 1 , lowerRow + padRow) == 0) // no matching events
       {
-        tracks[currentTrack]->addEvent(tickTemp, lowerRow + padRow, 0, tracks[currentTrack]->getTrackDefaultNoteLengthTicks(), auditTrack);
+        tracks[currentTrack]->addEvent(tickTemp, lowerRow + padRow, tracks[currentTrack]->getTrackDefaultVelocity(), tracks[currentTrack]->getTrackDefaultNoteLengthTicks(), auditTrack);
         padState = tracks[currentTrack]->color;
       }
       else
@@ -203,16 +203,21 @@ void LPNoteOn(byte channel, byte note, byte velocity)
         tracks[currentTrack]->removeEvents(tickTemp, tickTemp + ticksPerColumn -1, lowerRow + padRow);
         padState = LP_OFF;
       }
-      LP1.setPadColor(note, padState);
+      LPcopy_updateSingleEvent_converter(note, padState);
    } 
 
   if ( ( LPdisplayMode == LPMODE_PATTERN ) && ( sequencerEditMode == MODE_EVENTEDIT ) && (velocity > 0) )
   {
     // Select existing events
     currentEvent = tracks[currentTrack]->getEventId(tickTemp, lowerRow + padRow);
-    Serial.print("Event Id Selected: ");
-    Serial.println(currentEvent);
   }
+
+  if  ( ( LPdisplayMode == LPMODE_SONG ) && ( sequencerEditMode == MODE_PATTERNEDIT ) && (velocity > 0) )
+  {
+    // add / remove patterns
+  }
+}
+
   
 //
 //  if (displayMode == DISPLAYMODE_PATTERNSELECT)
@@ -277,7 +282,7 @@ void LPNoteOn(byte channel, byte note, byte velocity)
 //      }
 //    }
 //  }
-}
+//}
 
 void LPNoteOff(byte channel, byte note, byte velocity)
 {
@@ -309,6 +314,7 @@ void LPControlChange(byte channel, byte control, byte value)
   //Serial.printf("LP CC: %d, %d\n", control, value);
   if (value > 0)
   {
+    uint8_t trackTemp = (control - 9) / 10 - 2;
     switch (control)
     {
       case CCtrack1:
@@ -318,8 +324,9 @@ void LPControlChange(byte channel, byte control, byte value)
       case CCtrack5:
       case CCtrack6:
       case CCtrack7:
-        currentTrack = (control - 9) / 10 - 2;
-         break;
+        if (LPdisplayMode == LPMODE_SONG) LPtoggleMute(trackTemp);
+        else setCurrentTrack(trackTemp);
+        break;
       case CCstartStop:
         // toggle sequencer state stopped/running
         if (sequencerState == STATE_STOPPED)

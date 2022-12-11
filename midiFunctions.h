@@ -10,9 +10,6 @@
 
 extern LaunchPad LP1;
 
-#define LPMODE_SONG     0
-#define LPMODE_PATTERN  1
-
 void setupMidi();
 void locateUsbComponents();
 void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize);
@@ -42,6 +39,8 @@ void LPControlChange(byte channel, byte control, byte value);
 void transposeMidiIn(uint8_t channel, uint8_t note, uint8_t velocity);
 
 void sendMidiClock();
+void sendMidiStart();
+void sendMidiStop();
 
 #define CC_MODWHEEL 1
 

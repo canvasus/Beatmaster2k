@@ -63,7 +63,7 @@ void audioBackend::_connect(AudioStream &source, unsigned char sourceOutput, Aud
   if (_internalConnectionIndex > NR_PATCHCORDS - 1)
   {
     _internalConnectionIndex = NR_PATCHCORDS - 1;
-    Serial.println("ERROR: Audio backend - no available patchcords");
+    Serial.println(F("ERROR: Audio backend - no available patchcords"));
   }
 }
 
@@ -73,8 +73,8 @@ void audioBackend::setupAudio()
   AudioMemory(128);
   codecControl1.setAddress(0x1A);
   codecControl2.setAddress(0x1B);
-  if (!codecControl1.enable()) Serial.println("Codec at 0x1A not responding");
-  if (!codecControl2.enable()) Serial.println("Codec at 0x1B not responding");
+  if (!codecControl1.enable()) Serial.println(F("Codec at 0x1A not responding"));
+  if (!codecControl2.enable()) Serial.println(F("Codec at 0x1B not responding"));
   //_sgtl5000.enable();
   //_sgtl5000.volume(_parameters.hpVolume);
   for (uint8_t voiceIndex = 0; voiceIndex < NR_VOICES; voiceIndex++)
@@ -128,9 +128,9 @@ float getReverbLevel() { return AudioBackend.getReverbLevel(); }
 
 void displayResources()
 {
-  Serial.print("Audio mem usage: ");
+  Serial.print(F("Audio mem usage: "));
   Serial.println(AudioMemoryUsageMax());
-  Serial.print("Audio processor usage: ");
+  Serial.print(F("Audio processor usage: "));
   Serial.println(AudioProcessorUsageMax());
   AudioMemoryUsageMaxReset(); 
   AudioProcessorUsageMaxReset(); 

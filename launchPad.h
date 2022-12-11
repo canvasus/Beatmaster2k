@@ -14,6 +14,7 @@
 #define LP_GHOST  1
 #define LP_OFF    0
 #define LP_DARKBLUE 45
+#define LP_YELLOW 13
 
 class LaunchPad {
   private:

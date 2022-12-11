@@ -25,7 +25,7 @@ voice::voice(uint8_t id)
 {
   _outputConnectionIndex = 0;
   _internalConnectionIndex = 0;
-  _sample = AudioSampleKick;
+  //_sample = AudioSampleKick;
   _parameters.sideChainSendChannel = id;
   
   // GENERATORS
@@ -107,7 +107,7 @@ voice::voice(uint8_t id)
 
 void voice::noteOn(uint8_t note, uint8_t velocity)
 {
-  if (_sample != nullptr) _player.play(_sample);
+  //if (_sample != nullptr) _player.play(_sample);
   setOscFrequency(note);
   _ampEnvelope.noteOn();
   _filterEnvelope.noteOn();
