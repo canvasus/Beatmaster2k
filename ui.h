@@ -9,7 +9,7 @@
 #include <MCP23017.h>
 #include <Encoder.h>
 #include <Bounce.h>
-#include "audioFcns.h"
+//#include "audioFcns.h"
 
 #define SCREEN_YRES 240
 #define SCREEN_XRES 320
@@ -120,7 +120,7 @@ struct parameters
   FPgetString enumFunction = nullptr;
 };
 
-extern audioBackend AudioBackend;
+//extern audioBackend AudioBackend;
 extern Track *tracks[NR_TRACKS];
 
 void setupUI();
@@ -160,7 +160,6 @@ void LPcopy_updateColumn(uint8_t column);
 void LPcopy_setStepIndicator();
 void LPcopy_setColumnColor(uint8_t page, uint8_t column, uint8_t LPcolor);
 
-
 void LPinit();
 void LPsetStepIndicator();
 void LPpageIncrease();
@@ -169,10 +168,9 @@ void LPscrollUp();
 void LPscrollDown();
 void LPsetPageFromTrackData();
 void LPsetColumnFromTrackData(uint8_t padColumn);
-//void LPdisplayPatternPage(bool firstCall);
 void setLPsongMode();
 void setLPpatternMode();
-void LPsetTrackButtonsSongMode();
+void LPsetTrackButtonsSongMode(bool forceUpdate);
 void LPtoggleMute(uint8_t control);
 void LPsetPageFromArrangementData();
 void LPsetTrackRowFromArrangementData(uint8_t trackId);

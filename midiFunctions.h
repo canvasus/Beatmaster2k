@@ -4,7 +4,7 @@
 #include <USBHost_t36.h>
 #include "launchPad.h"
 #include "track.h"
-#include "voice.h"
+//#include "voice.h"
 #include "ui.h"
 #include "sequencer.h"
 

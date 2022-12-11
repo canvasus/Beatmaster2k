@@ -31,14 +31,14 @@ const uint8_t nrTracks = 7;
 Track *tracks[nrTracks] = {&track0, &track1, &track2, &track3, &track4, &track5, &track6};
 
 //voice Voices[NR_VOICES] = {voice(0), voice(1), voice(2), voice(3)};
-voice Voices[NR_VOICES] = {voice(0)};
+//voice Voices[NR_VOICES] = {voice(0)};
 
 void setupMidi()
 {
   Serial.println(F("MIDI SETUP"));
   delay(1000);
   myusb.begin();
-  delay(100);
+  delay(300);
   //usbMIDI.setHandleNoteOn(transposeMidiIn);
   //usbMIDI.setHandleNoteOff(transposeMidiIn);
   //usbMIDI.setHandleControlChange(myControlChange);
@@ -122,8 +122,14 @@ void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
   usbMIDI.sendNoteOff(note, 127, channel);
 }
 
-void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) { Voices[channel].noteOn(note, velocity); }
-void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) { Voices[channel].noteOff(note, velocity); }
+void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
+{ 
+  //Voices[channel].noteOn(note, velocity);
+}
+void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
+{
+  //Voices[channel].noteOff(note, velocity);
+}
 
 void serialMidiNoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { MIDI.sendNoteOn(noteValue, 127, channel); }
 void serialMidiNoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { MIDI.sendNoteOff(noteValue, 127, channel); }

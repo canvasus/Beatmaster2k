@@ -13,11 +13,17 @@
 #define PATTERN_ACTIVE      2
 #define PATTERN_CUED        3
 
+#define MUTE_OFF            0
+#define MUTE_ON             1
+#define MUTE_ON_CUED        2
+#define MUTE_OFF_CUED       3
+
 #define NR_TRACK_EVENTS     128
 #define NR_PLAYED_EVENTS    16
 #define RESOLUTION          24 // ticks per beat (1/4th)
 #define RESOLUTION16TH      6  // ticks per 1/16th --> ticks per index
 
+#define NR_TRACKS           7
 #define NR_PATTERNS         8
 
 #define MIDICH_NOTEVALUE 17
@@ -71,7 +77,9 @@ class Track {
     uint8_t       _cuedPattern;
 
     uint8_t       _tickFlag;
-
+    bool          _cuedMuteFlag;
+    bool          _cuedMuteStatus;
+    
     // Track configuration
 
     
@@ -89,6 +97,7 @@ class Track {
     void          _copyToPlayedBuffer(trackEvent event);
     void          _auditEvent(trackEvent event);
     uint16_t      _tickPrescaler();
+    
       
   public:
     Track(uint8_t trackId, String trackName, uint8_t trackColor);
@@ -122,6 +131,7 @@ class Track {
     uint16_t      getEventsInTickNoteInterval(uint16_t tickStart, uint16_t tickEnd, uint8_t noteStart, uint8_t noteEnd);
     int16_t       getEventId(uint16_t tick, uint8_t note);
     uint8_t       getPatternStatus(uint8_t patternId);
+    
 
     void          clearPattern(uint8_t patternId);
     void          clearTrack();
@@ -129,6 +139,9 @@ class Track {
     void          setPatternId(uint8_t patternId);
     void          cuePatternId(uint8_t patternId);
     uint8_t       getActivePatternId();
+
+    void          cueMuteStatus(bool status);
+    uint8_t       getMuteStatus();
 
     TrackEvent    getEvent(uint8_t patternId, uint8_t eventId);
     void          setEvent(uint8_t patternId, uint8_t eventId, TrackEvent event);

@@ -466,6 +466,7 @@ void LPinit()
   LP1.setPadColor(CCstartStop, LP_RED);
   LP1.setPadColor(CCeditMode, LP_RED);
   LP1.setPadColor(CCpatternMode, LP_GREEN);
+  LP1.setPadColor(CCsongMode, LP_OFF);
 }
 
 void updateLaunchpadUI()
@@ -489,27 +490,48 @@ void updateLaunchpadUI()
   
   if ((LPdisplayMode == LPMODE_SONG) && (oldLPmode != LPMODE_SONG))
   {
-    LPsetTrackButtonsSongMode();
     LPsetPageFromArrangementData();
+    LPsetTrackButtonsSongMode(true);
     oldLPmode = LPMODE_SONG;
   }
+   if (LPdisplayMode == LPMODE_SONG) LPsetTrackButtonsSongMode(false);
 }
 
-void LPsetTrackButtonsSongMode()
+void LPsetTrackButtonsSongMode(bool forceUpdate)
 {
+  static uint8_t muteStatus[7] = {5,5,5,5,5,5,5};
   for (uint8_t trackId = 0; trackId < 7; trackId++)
   {
-    uint8_t color = LP_OFF;
-    if (tracks[trackId]->trackMuted) color = LP_RED;
-    else color = tracks[trackId]->color;
-    LP1.setPadColor(29 + trackId * 10, color);
+    uint8_t padId = 29 + trackId * 10;
+    uint8_t tempMuteStatus = tracks[trackId]->getMuteStatus();
+    if (tempMuteStatus != muteStatus[trackId] || forceUpdate)
+    {
+      muteStatus[trackId] = tempMuteStatus;
+      switch (tracks[trackId]->getMuteStatus())
+      {
+        case MUTE_OFF:
+          LP1.setPadColor(padId, tracks[trackId]->color);
+          break;
+        case MUTE_ON:
+          LP1.setPadColor(padId, LP_RED);
+          break;
+        case MUTE_ON_CUED:
+          LP1.setPadColorFlashing(padId, LP_RED);
+          break;
+        case MUTE_OFF_CUED:
+          LP1.setPadColorFlashing(padId, LP_RED);
+          break;
+      }
+    }
   }
 }
 
 void LPtoggleMute(uint8_t trackId)
 {
-  tracks[trackId]->trackMuted = !tracks[trackId]->trackMuted;
-  LPsetTrackButtonsSongMode();
+  bool muteStatus = !tracks[trackId]->trackMuted;
+  if (sequencerState == STATE_RUNNING) tracks[trackId]->cueMuteStatus(muteStatus);
+  else tracks[trackId]->trackMuted = muteStatus;
+  LPsetTrackButtonsSongMode(false);
 }
 
 void LPsetPageFromArrangementData() { for (uint8_t trackId = 0; trackId < 7; trackId++) LPsetTrackRowFromArrangementData(trackId); }
@@ -639,7 +661,7 @@ uint16_t lpColor2tftColor(uint8_t lpColor)
     case LP_PINK: return TFT_PINK;
     case LP_GHOST: return TFT_GHOST;
     case LP_DARKBLUE: return TFT_DARKBLUE;
-    case LP_YELLOW: return TFT_DARKBLUE;
+    case LP_YELLOW: return TFT_YELLOW;
     case LP_OFF: return TFT_OFF;
     default: return 0;
   }

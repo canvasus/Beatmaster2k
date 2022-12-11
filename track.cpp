@@ -18,6 +18,8 @@ Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
    trackRespondToTranspose = false;
    trackMuted = false;
    _tickFlag = 0;
+   _cuedMuteFlag =  false;
+   _cuedMuteStatus =  false;
 
    for (int patternId = 0; patternId < NR_PATTERNS; patternId++)
    {
@@ -26,7 +28,7 @@ Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
       _patterns[patternId].trackEvents[i] = empty_trackEvent;
     }
     _patterns[patternId].patternId = patternId;
-    _patterns[patternId].patternLengthTicks = 8 * RESOLUTION - 1; // 4 * 1/4th, (previously set to _trackLengthTicks)
+    _patterns[patternId].patternLengthTicks = 8 * RESOLUTION16TH - 1; //RESOLUTION - 1; // 4 * 1/4th, (previously set to _trackLengthTicks)
     _patterns[patternId].patternStatus = PATTERN_EMPTY;
     _patterns[patternId].patternSpeed = PATTERN_SPEED_x1;
    }
@@ -120,7 +122,26 @@ void Track::loopResetTrack()
     _cuedPattern =  255;
     _compactEventArray();
   }
+  if (_cuedMuteFlag)
+  {
+    trackMuted = _cuedMuteStatus;
+    _cuedMuteFlag =  false;
+  }
   //printEventArray();
+}
+
+void Track::cueMuteStatus(bool status)
+{
+  _cuedMuteStatus = status;
+  _cuedMuteFlag = true;
+}
+
+uint8_t Track::getMuteStatus()
+{
+  if ( (trackMuted == true) && (_cuedMuteFlag == false) ) return MUTE_ON;
+  if ( (trackMuted == false) && (_cuedMuteFlag == true) && (_cuedMuteStatus == true) ) return MUTE_ON_CUED;
+  if ( (trackMuted == true) && (_cuedMuteFlag == true) && (_cuedMuteStatus == false) ) return MUTE_OFF_CUED;
+  return MUTE_OFF;
 }
 
 void Track::_triggerEvents()

@@ -1,6 +1,5 @@
 #include "sequencer.h"
-#include "track.h"
-#include "midiFunctions.h"
+
 
 uint8_t sequencerState      = STATE_STOPPED;
 uint8_t columnTimer         = 0;
@@ -78,7 +77,6 @@ void setTrackOutput(float value)
   tracks[currentTrack]->setHandleNoteOff(outputNoteOffFunctions[outputIndex]);
   tracks[currentTrack]->outputId = outputIndex;
 }
-
 
 void setCurrentTrack(uint8_t track)
 {
