@@ -13,15 +13,25 @@
 #define NR_PATTERNS_IN_ARRANGEMENT 8
 #define ARR_NO_PATTERN 254
 
+#define NR_SCENES 16
+
 #define ticksPerBeat 24         // 1/4 * 1/24 = 1/96th resolution
+
+struct sequencerData
+{
+  uint8_t bpm = 120;
+  uint8_t scenes[NR_TRACKS][NR_SCENES];
+  uint8_t sceneColors[NR_SCENES];
+};
+
+extern sequencerData SequencerData;
 
 extern uint8_t sequencerState;
 extern uint8_t sequencerEditMode;
-extern uint16_t   bpm ;
-extern uint8_t arrangement[NR_TRACKS][NR_PATTERNS_IN_ARRANGEMENT];
+extern String outputNames[];
+extern Track *tracks[NR_TRACKS];
 
 void initSequencer();
-void updateSequencer();
 void tickTracks();
 
 void startSequencer();
@@ -63,3 +73,10 @@ String getPatternSpeedEnum(uint8_t value);
 
 void resetTracks();
 void flushTracksPlayedBuffers();
+
+void updateSceneConfiguration(uint8_t sceneId);
+void setScene(uint8_t sceneId);
+float getSceneNr();
+void setSceneNr(float sceneId);
+float getSceneColor();
+void setSceneColor(float color);

@@ -1,33 +1,35 @@
 #include "sequencer.h"
 
+Track track0(0, "T0", LP_BLUE);
+Track track1(1, "T1", LP_CYAN);
+Track track2(2, "T2", LP_PURPLE);
+Track track3(3, "T3", LP_PINK);
+Track track4(4, "T4", LP_ORANGE);
+Track track5(5, "T5", LP_GREEN);
+Track track6(6, "T6", LP_YELLOW);
+const uint8_t nrTracks = 7;
+Track *tracks[nrTracks] = {&track0, &track1, &track2, &track3, &track4, &track5, &track6};
+
+sequencerData SequencerData;
 
 uint8_t sequencerState      = STATE_STOPPED;
 uint8_t columnTimer         = 0;
 elapsedMicros tickTimer     = 0;
-uint16_t   bpm               = 120;
-uint16_t  oneTickUs         = 1000 * 60000 / (bpm * ticksPerBeat);
+uint16_t  oneTickUs         = 1000 * 60000 / (SequencerData.bpm * ticksPerBeat);
 int sequencerStep = -1;
-
 uint8_t sequencerEditMode = MODE_PATTERNEDIT;
 
 IntervalTimer sequencerUpdateTimer;
 
-MIDIcallback outputNoteOnFunctions[] = {voiceNoteOn, serialMidiNoteOn, deviceNoteOn, midi1NoteOn, midi2NoteOn, midi3NoteOn, midi4NoteOn};
-MIDIcallback outputNoteOffFunctions[] = {voiceNoteOff, serialMidiNoteOff, deviceNoteOff, midi1NoteOff, midi2NoteOff, midi3NoteOff, midi4NoteOff};
-String outputNames[] = {"Voice", "Serial", "USB device", "USB 1", "USB 2", "USB 3", "USB 4"};
+MIDIcallback outputNoteOnFunctions[] = {voiceNoteOn, serialMidiNoteOn, deviceNoteOn, midi1NoteOn, midi2NoteOn, midi3NoteOn, midi4NoteOn, midi5NoteOn};
+MIDIcallback outputNoteOffFunctions[] = {voiceNoteOff, serialMidiNoteOff, deviceNoteOff, midi1NoteOff, midi2NoteOff, midi3NoteOff, midi4NoteOff, midi5NoteOff};
+String outputNames[] = {"Dummy", "Serial", "USB device", "USB 0", "USB 1", "USB 2", "USB 3", "USB 4"};
 uint8_t nrOutputFunctions = sizeof(outputNoteOnFunctions)/sizeof(outputNoteOnFunctions[0]);
 const String noYesSelected[] = {"No", "Yes", "Selected"};
 
-uint8_t arrangement[NR_TRACKS][NR_PATTERNS_IN_ARRANGEMENT];
-
 void initSequencer()
 {
-  for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++)
-  {
-    for (uint8_t arrIndex = 0; arrIndex < NR_PATTERNS_IN_ARRANGEMENT; arrIndex++) arrangement[trackId][arrIndex] = ARR_NO_PATTERN;
-  }
-  
-  //sequencerUpdateTimer.begin(updateSequencer, oneTickUs); 
+  for (uint8_t sceneId = 0;sceneId < NR_SCENES; sceneId++) SequencerData.sceneColors[sceneId] = LP_GREEN;
   sequencerUpdateTimer.begin(tickTracks, oneTickUs); 
 }
 
@@ -39,11 +41,6 @@ void tickTracks()
     for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->tickTrack();
     //AudioInterrupts();
   }
-}
-
-void updateSequencer()
-{
-   for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->update();
 }
 
 void startSequencer()
@@ -63,12 +60,12 @@ void stopSequencer()
 
 void setBpm(float newBpm)
 {
-  bpm = (uint16_t)newBpm;
-  oneTickUs = 1000 * 60000 / (bpm * ticksPerBeat);
+  SequencerData.bpm = (uint16_t)newBpm;
+  oneTickUs = 1000 * 60000 / (SequencerData.bpm * ticksPerBeat);
   sequencerUpdateTimer.update(oneTickUs); 
 }
 
-float getBpm() { return bpm; }
+float getBpm() { return SequencerData.bpm; }
 
 void setTrackOutput(float value)
 {
@@ -85,7 +82,16 @@ void setCurrentTrack(uint8_t track)
 }
 
 float getTrackOutput() { return tracks[currentTrack]->outputId; }
-String getOutputEnum(uint8_t value) { return outputNames[value]; }
+String getOutputEnum(uint8_t value)
+{
+  if (value > 2 && value < nrOutputFunctions)
+  {
+    char buf[16];
+    getUsbDeviceName(value - 3, buf, 16);
+    outputNames[value] = buf;
+  }
+  return outputNames[value];
+}
 
 float getTrackChannel() { return (float)(tracks[currentTrack]->getTrackChannel()); }
 void setTrackChannel(float channel) { tracks[currentTrack]->setTrackChannel((uint8_t)channel); }
@@ -173,4 +179,38 @@ void resetTracks()
 void flushTracksPlayedBuffers()
 {
   for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->flushPlayedBuffer();
+}
+
+void updateSceneConfiguration(uint8_t sceneId)
+{
+  // update pattern configuration in selected scene
+  for (uint8_t trackId = 0; trackId < NR_TRACKS; trackId++)
+  {
+    SequencerData.scenes[trackId][sceneId] =  tracks[trackId]->getActivePatternId();
+  }
+}
+
+void setScene(uint8_t sceneId)
+{
+  // set or cue patterns from scene
+  for (uint8_t trackId = 0; trackId < NR_TRACKS; trackId++)
+  {
+    if ( (sequencerState == STATE_STOPPED) && ( tracks[trackId]->getActivePatternId() != SequencerData.scenes[trackId][sceneId]) ) tracks[trackId]->setPatternId(SequencerData.scenes[trackId][sceneId]);
+    if (sequencerState == STATE_RUNNING && ( tracks[trackId]->getActivePatternId() != SequencerData.scenes[trackId][sceneId]) ) tracks[trackId]->cuePatternId(SequencerData.scenes[trackId][sceneId]);
+  }
+}
+
+float getSceneNr() { return (float)currentScene; }
+
+void setSceneNr(float sceneId)
+{
+  currentScene = (uint8_t)sceneId;
+  setScene(sceneId);
+}
+
+float getSceneColor() { return SequencerData.sceneColors[currentScene]; }
+void setSceneColor(float color)
+{
+  SequencerData.sceneColors[currentScene] = (uint8_t)color;
+  LPsetSceneButtonsSongMode(true);
 }

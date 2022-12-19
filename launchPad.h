@@ -7,6 +7,7 @@
 #define LP_RED    5
 #define LP_BLUE   41
 #define LP_GREEN  22
+#define LP_DARKGREEN 123
 #define LP_PURPLE 49
 #define LP_CYAN   33
 #define LP_ORANGE 9

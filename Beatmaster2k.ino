@@ -1,17 +1,15 @@
-//#include "audioFcns.h"
 #include "midiFunctions.h"
 #include "sequencer.h"
 #include "ui.h"
-
-//audioBackend AudioBackend;
+#include "sdMgr.h"
 
 void setup()
 {
   Serial.println(F("START"));
   if (CrashReport) Serial.print(CrashReport);
   setupUI();
-  //AudioBackend.setupAudio();
   setupMidi();
+  initSDcard();
   initSequencer();
 }
 
@@ -19,5 +17,4 @@ void loop()
 {
   updateMidi();
   updateUI();
-  //updateSequencer();
 }

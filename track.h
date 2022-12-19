@@ -75,13 +75,13 @@ class Track {
     uint8_t       _cuedEventIndex;
     uint8_t       _currentPattern;
     uint8_t       _cuedPattern;
+    uint8_t       _prescalerCounter;
 
     uint8_t       _tickFlag;
     bool          _cuedMuteFlag;
     bool          _cuedMuteStatus;
     
     // Track configuration
-
     
     uint8_t       _midiChannel;
     uint8_t       _defaultNoteLengthTicks;
@@ -109,7 +109,7 @@ class Track {
     bool          trackMuted;
     uint8_t       lowerRow;
 
-    void          update();
+    //void          update();
    
     uint8_t       getId();
     uint16_t      getEventTick(uint8_t eventId);

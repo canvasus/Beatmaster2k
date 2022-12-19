@@ -11,46 +11,20 @@ MIDIDevice_BigBuffer midi5(myusb); // Launchpad or Midi device
 LaunchPad LP1 = LaunchPad(1);
 
 MIDIDevice_BigBuffer * midiDrivers[5] = {&midi1, &midi2, &midi3, &midi4, &midi5};
-USBDriver *drivers[] = {&midi1, &midi2, &midi3, &midi4, &midi5};
 const char * driver_names[5] = {"midi1", "midi2", "midi3", "midi4", "midi5"};
-#define CNT_DEVICES (sizeof(drivers)/sizeof(drivers[0])) 
+#define CNT_DEVICES (sizeof(midiDrivers)/sizeof(midiDrivers[0])) 
 
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
 const float DIV127 = (1.0/127.0);
 
-Track track0(0, "T0", LP_BLUE);
-Track track1(1, "T1", LP_CYAN);
-Track track2(2, "T2", LP_PURPLE);
-Track track3(3, "T3", LP_PINK);
-Track track4(4, "T4", LP_ORANGE);
-Track track5(5, "T5", LP_GREEN);
-Track track6(6, "T6", LP_YELLOW);
-const uint8_t nrTracks = 7;
-
-Track *tracks[nrTracks] = {&track0, &track1, &track2, &track3, &track4, &track5, &track6};
-
-//voice Voices[NR_VOICES] = {voice(0), voice(1), voice(2), voice(3)};
-//voice Voices[NR_VOICES] = {voice(0)};
-
 void setupMidi()
 {
   Serial.println(F("MIDI SETUP"));
-  delay(1000);
+  delay(1500);
   myusb.begin();
-  delay(300);
-  //usbMIDI.setHandleNoteOn(transposeMidiIn);
-  //usbMIDI.setHandleNoteOff(transposeMidiIn);
-  //usbMIDI.setHandleControlChange(myControlChange);
   MIDI.begin(MIDI_CHANNEL_OMNI);
   MIDI.setHandleNoteOn(transposeMidiIn);
-  //MIDI.setHandleNoteOff(deviceNoteOff);
-  //MIDI.setHandleControlChange(myControlChange);
-  midi1.setHandleNoteOn(transposeMidiIn);
-  midi2.setHandleNoteOn(transposeMidiIn);
-  midi3.setHandleNoteOn(transposeMidiIn);
-  midi4.setHandleNoteOn(transposeMidiIn);
-  midi5.setHandleNoteOn(transposeMidiIn);
   locateUsbComponents();
   LPinit();
 }
@@ -64,10 +38,13 @@ void locateUsbComponents()
   {
     for (uint8_t index = 0; index < CNT_DEVICES; index++)
     {
-      if (*drivers[index])
+      if (*midiDrivers[index])
       {
-        const uint8_t * productName = drivers[index]->product();
-        uint16_t productId = drivers[index]->idProduct();
+        const uint8_t * productName = midiDrivers[index]->product();
+        char buf[16];
+        snprintf(buf, 16, "%s", productName);
+        outputNames[index + 3] = buf;
+        uint16_t productId = midiDrivers[index]->idProduct();
         Serial.print(driver_names[index]);
         Serial.print(": PID 0x");
         Serial.print(productId, HEX);
@@ -78,18 +55,19 @@ void locateUsbComponents()
           LPassigned = true;
         }
       }
-      delay(100);
+      delay(10);
     }
   }
   configureLaunchPad(LP_index);
+  configureMidiInputDevices(LP_index);
 }
 
 void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize)
 {
   char na[4] = {'N', '/', 'A'};
-  if (*drivers[usbIndex])
+  if (*midiDrivers[usbIndex])
   {
-    const uint8_t * productName = drivers[usbIndex]->product();
+    const uint8_t * productName = midiDrivers[usbIndex]->product();
     for(uint8_t i = 0; i < maxBufferSize; i++) buf[i] = productName[i];
   }
   else
@@ -107,6 +85,16 @@ void configureLaunchPad(uint8_t driverIndex)
   Serial.print(F("Initializing LP @ port: "));
   Serial.println(driver_names[driverIndex]);
   LP1.setProgrammerMode();
+  //delay(500);
+  //LP1.setProgrammerMode();
+}
+
+void configureMidiInputDevices(uint8_t LP_index)
+{
+   for (uint8_t driverIndex = 0; driverIndex < CNT_DEVICES; driverIndex++)
+    {
+      if (driverIndex != LP_index) midiDrivers[driverIndex]->setHandleNoteOn(transposeMidiIn);
+    }
 }
 
 void transposeMidiIn(uint8_t channel, uint8_t note, uint8_t velocity) { setTranspose(note - 36); }
@@ -142,6 +130,8 @@ void midi3NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi3.s
 void midi3NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi3.sendNoteOff(noteValue, 127, channel); }
 void midi4NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi4.sendNoteOn(noteValue, 127, channel); }
 void midi4NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi4.sendNoteOff(noteValue, 127, channel); }
+void midi5NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi5.sendNoteOn(noteValue, 127, channel); }
+void midi5NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { midi5.sendNoteOff(noteValue, 127, channel); }
 
 void myControlChange(byte channel, byte control, byte value)
 {
@@ -218,9 +208,27 @@ void LPNoteOn(byte channel, byte note, byte velocity)
     currentEvent = tracks[currentTrack]->getEventId(tickTemp, lowerRow + padRow);
   }
 
-  if  ( ( LPdisplayMode == LPMODE_SONG ) && ( sequencerEditMode == MODE_PATTERNEDIT ) && (velocity > 0) )
+  if  ( ( LPdisplayMode == LPMODE_SONG ) && (velocity > 0) )
   {
     // add / remove patterns
+    bool inPatternRange =  (velocity > 0 && note >= 21 && note <= 88); // in pattern range
+    if (inPatternRange) //(velocity > 0 && note >= 21 && note <= 68) 
+    {
+      uint8_t padColumn = LPnoteToPadColumn(note);
+      uint8_t padRow = LPnoteToPadRow(note);
+      uint8_t trackId = padRow - 1;
+      uint8_t patternId = padColumn;
+      if (sequencerState == STATE_STOPPED) tracks[trackId]-> setPatternId(patternId);
+      if (sequencerState == STATE_RUNNING) tracks[trackId]-> cuePatternId(patternId);
+      updateSceneConfiguration(currentScene);
+    }
+    bool inSceneRange =  (velocity > 0 && note >= 11 && note <= 18); // in scene range
+    if (inSceneRange)
+    {
+      currentScene = LP1.page * 8 + note - 11;
+      setScene(currentScene);
+    }
+    
   }
 }
 
@@ -339,7 +347,6 @@ void LPControlChange(byte channel, byte control, byte value)
         {
           startSequencer();
           LP1.setPadColor(CCstartStop, LP_GREEN);
-          LPsetPageFromTrackData();
         }
         else
         {

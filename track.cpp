@@ -21,6 +21,8 @@ Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
    _cuedMuteFlag =  false;
    _cuedMuteStatus =  false;
 
+   _prescalerCounter = 0;
+
    for (int patternId = 0; patternId < NR_PATTERNS; patternId++)
    {
     for (int i = 0; i < _nrEvents;i++)
@@ -45,18 +47,6 @@ Track::Track(uint8_t trackId, String trackName, uint8_t trackColor)
 
 uint8_t Track::getId() { return _trackId; }
 
-void Track::update()
-{
-//  if (_currentTrackTick > _patterns[_currentPattern].patternLengthTicks) //_trackLengthTicks
-//  {
-//    _currentTrackTick = 0;
-//    loopResetTrack();
-//  }
-//  if (!trackMuted && ( _tickFlag > 0 )) _triggerEvents();
-//  if (_tickFlag > 0) _handleAutoNoteOff();
-//  _tickFlag = 0;
-}
-
 void Track::tickTrack() // sent from main sequencer at defined tick rate
 {
   _tickFlag = _tickPrescaler();
@@ -66,6 +56,7 @@ void Track::tickTrack() // sent from main sequencer at defined tick rate
   {
     _currentTrackTick = 0;
     loopResetTrack();
+    _tickFlag = 0;
   }
  if (!trackMuted) _triggerEvents();
   _handleAutoNoteOff();
@@ -73,7 +64,6 @@ void Track::tickTrack() // sent from main sequencer at defined tick rate
 
 uint16_t Track::_tickPrescaler()
 {
-  static uint8_t counter = 0;
   switch (_patterns[_currentPattern].patternSpeed)
   {
     case PATTERN_SPEED_x1: return 1;
@@ -81,28 +71,28 @@ uint16_t Track::_tickPrescaler()
     case PATTERN_SPEED_x2: return 2;
     
     case PATTERN_SPEED_x1_4:
-      counter++;
-      if (counter >= 4)
+      _prescalerCounter++;
+      if (_prescalerCounter >= 4)
       {
-        counter = 0;
+        _prescalerCounter = 0;
         return 1;
       }
       else return 0;
 
     case PATTERN_SPEED_x1_3:
-      counter++;
-      if (counter >= 3)
+      _prescalerCounter++;
+      if (_prescalerCounter >= 3)
       {
-        counter = 0;
+        _prescalerCounter = 0;
         return 1;
       }
       else return 0;
    
     case PATTERN_SPEED_x1_2:
-      counter++;
-      if (counter >= 2)
+      _prescalerCounter++;
+      if (_prescalerCounter >= 2)
       {
-        counter = 0;
+        _prescalerCounter = 0;
         return 1;
       }
       else return 0;
@@ -186,7 +176,7 @@ void Track::_handleAutoNoteOff()
   // If events in played buffer have current tick >= event tick + event length, send note off
   // change to:
   // if length == 0 send note off
-  // otherwise length = length - 1 tick
+  // otherwise length = length - 1 tick * prescaler
   for (uint8_t index = 0; index < NR_PLAYED_EVENTS; index++)
   {
     if((_playedEvents[index].header == EVENT_MIDI_PLAYED) && (_playedEvents[index].noteLength == 0))
@@ -197,8 +187,8 @@ void Track::_handleAutoNoteOff()
     }
     else if (_playedEvents[index].header == EVENT_MIDI_PLAYED)
     {
-      _playedEvents[index].noteLength = _playedEvents[index].noteLength - 1;
-      //_playedEvents[index].noteLength = _playedEvents[index].noteLength - _tickFlag;
+      //_playedEvents[index].noteLength = _playedEvents[index].noteLength - 1;
+      _playedEvents[index].noteLength = _playedEvents[index].noteLength - _tickFlag;
     }
   }
 }
@@ -252,6 +242,7 @@ void Track::addEvent(uint16_t tick, uint8_t noteValue, uint8_t noteVelocity, uin
   if(audit) _auditEvent(_patterns[_currentPattern].trackEvents[_nextFreeEventId]);
   if (tick < _currentTrackTick) _updateCuedEventIndex();
   _compactEventArray();
+  _patterns[_currentPattern].patternStatus = PATTERN_FILLED;
   //printEventArray(16);
 
 }
@@ -361,7 +352,6 @@ void Track::setPattern(uint8_t patternId, Pattern inputPattern) { _patterns[patt
 
 void Track::setPatternId(uint8_t patternId)
 {
-   Serial.println(F("track.cpp function"));
   _currentPattern = patternId;
   _patterns[_currentPattern].patternStatus = PATTERN_ACTIVE;
 }

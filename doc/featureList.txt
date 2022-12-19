@@ -1,5 +1,4 @@
 Pattern management
- Select ptn
  Clear ptn
  Copy ptn
  Paste ptn
@@ -11,8 +10,6 @@ Event edit
  Change velocity
  Default velocity
  
-Mute tracks
-
 Internal voices?
  Play samples?
  

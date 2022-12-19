@@ -9,7 +9,7 @@
 #include <MCP23017.h>
 #include <Encoder.h>
 #include <Bounce.h>
-//#include "audioFcns.h"
+#include "sdMgr.h"
 
 #define SCREEN_YRES 240
 #define SCREEN_XRES 320
@@ -61,6 +61,7 @@
 #define PAGE_TRACK        3
 #define PAGE_FILE         4
 #define PAGE_LISTDEVICES  5
+#define PAGE_SCENE        6
 
 #define PATTERN_LENGTH          0
 #define PATTERN_SPEED           1
@@ -71,8 +72,10 @@
 #define EVENT_LENGTH            6
 #define TRACK_TRANSPOSESTATUS   7
 #define PATTERN_NR              8
+#define SCENE_NR                9
+#define SCENE_COLOR             10
 
-#define NR_PARAMETERS 9
+#define NR_PARAMETERS 11
 #define MAX_CHILDREN 8
 #define PAGE_NAV 0
 #define PAGE_PAR 1
@@ -92,6 +95,7 @@ extern uint8_t LPdisplayMode;
 extern uint8_t currentTrack;
 extern uint8_t currentPattern;
 extern int16_t currentEvent;
+extern uint8_t currentScene;
 
 typedef float (* FPgetFloat)();
 typedef void (* FPsetFloat)(float);
@@ -110,7 +114,7 @@ struct page
 struct parameters
 {
   char name[8];
-  float value;
+ //float value;
   float minValue;
   float maxValue;
   float multiplier;
@@ -119,9 +123,6 @@ struct parameters
   FPsetFloat setFunction = nullptr;
   FPgetString enumFunction = nullptr;
 };
-
-//extern audioBackend AudioBackend;
-extern Track *tracks[NR_TRACKS];
 
 void setupUI();
 void showStartupScreen();
@@ -132,7 +133,7 @@ void updateLaunchpadUI();
 
 bool updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCall);
 
-void updateNavigationPage(const uint8_t * pageArray, uint8_t nrButtons, bool firstCall);
+//void updateNavigationPage(const uint8_t * pageArray, uint8_t nrButtons, bool firstCall);
 void clearNavigationArea();
 void drawMenuButton(uint8_t index, String text, bool selected);
 
@@ -140,14 +141,14 @@ void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParamet
 void drawParameterRow(uint8_t index, uint8_t parameter, bool selected);
 void updateParameterRow(uint8_t index, uint8_t parameter);
 
-//void drawPotWidget(uint8_t index, uint8_t parameter, bool selected, bool drawStatics);
-//void updatePotWidget(uint8_t index, uint8_t parameter);
-
 float getValue(uint8_t parameter);
 void updateValue(uint8_t parameter, float value);
 
 void handleSpecialPages(bool firstCall);
 void displayDevicePage(bool firstCall);
+void displayFilePage(bool firstCall);
+void displayFileNr(uint8_t fileNr);
+void displayLoadSave();
 
 void LPcopy_update(bool firstCall, bool forceVariableUpdate);
 void LPcopy_clearArea();
@@ -171,9 +172,11 @@ void LPsetColumnFromTrackData(uint8_t padColumn);
 void setLPsongMode();
 void setLPpatternMode();
 void LPsetTrackButtonsSongMode(bool forceUpdate);
+void LPsetSceneButtonsSongMode(bool forceUpdate);
 void LPtoggleMute(uint8_t control);
-void LPsetPageFromArrangementData();
-void LPsetTrackRowFromArrangementData(uint8_t trackId);
+void LPsetPageFromArrangementData(bool forceUpdate);
+void LPsetTrackRowFromArrangementData(uint8_t trackId, bool forceUpdate);
+
 
 uint16_t lpColor2tftColor(uint8_t lpColor);
 

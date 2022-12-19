@@ -8,34 +8,40 @@ MCP23017 mcp = MCP23017(MCP23017_ADDR, Wire1);
 uint8_t currentTrack = 0;
 uint8_t currentPattern = 0;
 int16_t currentEvent = -1;
+uint8_t currentScene = 0;
 uint8_t currentPage = PAGE_SONG;
 uint8_t LPdisplayMode = LPMODE_PATTERN;
 
-//                      .pageType .name       .pageBack   .nrChildren  .children  .widget
+//                      .pageType    .name       .pageBack   .nrChildren  .children  .widget
 const page pages[] = {
-                      {PAGE_PAR,  "SONG",     PAGE_SONG,  1,         {SONG_BPM}, W_LIST},
-                      {PAGE_PAR,  "PATTERN",  PAGE_PATTERN,  4,      {PATTERN_NR, PATTERN_LENGTH, PATTERN_SPEED, PATTERN_EVENTLENGTHDEF}, W_LIST},
-                      {PAGE_PAR,  "EVENT",    PAGE_EVENT, 1,         {EVENT_LENGTH}, W_LIST},
-                      {PAGE_PAR,  "TRACK",    PAGE_TRACK,  3,        {TRACK_CHANNEL, TRACK_OUTPUT, TRACK_TRANSPOSESTATUS}, W_LIST},
-                      {PAGE_PAR,  "FILE",     PAGE_FILE,  0,         {}, W_NONE},
-                      {PAGE_LISTDEVICES,  "USBDEV",      PAGE_LISTDEVICES,  1,         {}, W_LIST}
+                      {PAGE_PAR,      "SONG",     PAGE_SONG,  1,         {SONG_BPM}, W_LIST},
+                      {PAGE_PAR,      "PATTERN",  PAGE_PATTERN,  4,      {PATTERN_NR, PATTERN_LENGTH, PATTERN_SPEED, PATTERN_EVENTLENGTHDEF}, W_LIST},
+                      {PAGE_PAR,      "EVENT",    PAGE_EVENT, 1,         {EVENT_LENGTH}, W_LIST},
+                      {PAGE_PAR,      "TRACK",    PAGE_TRACK,  3,        {TRACK_CHANNEL, TRACK_OUTPUT, TRACK_TRANSPOSESTATUS}, W_LIST},
+                      {PAGE_FILE,     "FILE",     PAGE_FILE,  0,         {}, W_NONE},
+                      {PAGE_LISTDEVICES,  "USBDEV",      PAGE_LISTDEVICES,  1,         {}, W_LIST},
+                      {PAGE_PAR,      "SCENE",    PAGE_SCENE, 2,         {SCENE_NR, SCENE_COLOR}, W_LIST}
                
 };
 
-//                                        name        .value  .minValue .maxValue .multiplier .displayPrecision  .getFunction .setFunction  .enumFunction                                          
+//                                        name        .minValue .maxValue .multiplier .displayPrecision  .getFunction .setFunction  .enumFunction                                          
 const parameters displayParameters[] = { 
-                                         {"LENGTH",   0,      1,        128,       1,         0,    &getTrackLengthColumns, &setTrackLengthColumns, nullptr},
-                                         {"SPEED",    0,      0,        4,         1,         0,    &getPatternSpeed, &setPatternSpeed, &getPatternSpeedEnum},
-                                         {"DEF.LEN",  0,      0,        64,        1,         0,    &getTrackDefLength, &setTrackDefLength, nullptr},
-                                         {"OUTPUT",   0,      0,        6,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
-                                         {"BPM",      0,      20,       300,       1,         0,    &getBpm, &setBpm, nullptr},
-                                         {"CHANNEL",  0,      0,        17,        1,         0,    &getTrackChannel, &setTrackChannel, &get0_16_note},
-                                         {"LENGTH",   0,      0,        128,       1,         0,    &getEventLength, &setEventLength, nullptr},
-                                         {"REC.TRP",  0,      0,        2,         1,         0,    &getTransposeStatus, &setTransposeStatus, &getNoYesSelectedEnum},
-                                         {"NR",       0,      0,        7,         1,         0,    &getTrackPatternNr, &setTrackPatternNr, nullptr}
-                                         
+                                         {"LENGTH",   1,        128,       1,         0,    &getTrackLengthColumns, &setTrackLengthColumns, nullptr},
+                                         {"SPEED",    0,        4,         1,         0,    &getPatternSpeed, &setPatternSpeed, &getPatternSpeedEnum},
+                                         {"DEF.LEN",  0,        64,        1,         0,    &getTrackDefLength, &setTrackDefLength, nullptr},
+                                         {"OUTPUT",   0,        7,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
+                                         {"BPM",      20,       300,       1,         0,    &getBpm, &setBpm, nullptr},
+                                         {"CHANNEL",  0,        17,        1,         0,    &getTrackChannel, &setTrackChannel, &get0_16_note},
+                                         {"LENGTH",   0,        128,       1,         0,    &getEventLength, &setEventLength, nullptr},
+                                         {"REC.TRP",  0,        2,         1,         0,    &getTransposeStatus, &setTransposeStatus, &getNoYesSelectedEnum},
+                                         {"NR",       0,        7,         1,         0,    &getTrackPatternNr, &setTrackPatternNr, nullptr},
+                                         {"NR",       0,        15,        1,         0,    &getSceneNr, &setSceneNr, nullptr},
+                                         {"COLOR",    0,        127,       1,         0,    &getSceneColor, &setSceneColor, nullptr}
                                         };
 
+                                        
+#define NR_DISPLAYPARAMETERS sizeof(displayParameters) / sizeof(displayParameters[0])
+float displayedParameterValues[NR_DISPLAYPARAMETERS];
 
 void setupUI()
 {
@@ -54,8 +60,11 @@ void showStartupScreen()
 {
   tft.setFont(Arial_24);
   tft.setTextColor(ILI9341_BLUE);
-  tft.setCursor(20, 90);
-  tft.print("BEATMAST3R 2K");
+  tft.setCursor(20, 88);
+  tft.print(F("BEATMAST3R 2K"));
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(22, 90);
+  tft.print(F("BEATMAST3R 2K"));
   for (uint8_t i = 0; i < 16; i++)
   {
     tft.drawFastHLine(10, 80 - i * 4, 300, tft.color565(0, 0, 200 - i * 10));
@@ -85,12 +94,11 @@ void updateDisplayUI()
   static uint8_t oldPage = PAGE_SONG;
   static bool firstCall = true;
   static uint8_t forceVariableUpdate = false;
-  if (pages[currentPage].pageType == PAGE_NAV) updateNavigationPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall);
-  else if (pages[currentPage].pageType == PAGE_PAR) updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall, forceVariableUpdate);
+  if (pages[currentPage].pageType == PAGE_PAR) updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall, forceVariableUpdate);
   else handleSpecialPages(firstCall);
   firstCall = !(oldPage == currentPage);
   oldPage =  currentPage;
-  forceVariableUpdate = updateHeader(currentTrack, currentPattern, bpm, false);
+  forceVariableUpdate = updateHeader(currentTrack, currentPattern, SequencerData.bpm, false);
   LPcopy_update(firstCall, forceVariableUpdate);
 }
 
@@ -163,33 +171,6 @@ bool updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCal
   return false;
 }
 
-void updateNavigationPage(const uint8_t * pageArray, uint8_t nrButtons, bool firstCall)
-{
-  static int16_t selectedButton = 0;
-  
-  if (firstCall)
-  {
-    tft.fillRect(0, PAGEINDICATOR_HEIGHT, SCREEN_XRES, NAV_AREA_HEIGHT , MAIN_BG_COLOR);
-    selectedButton = 0;
-    encoders[0].write(selectedButton);
-    for (uint8_t i = 0; i < nrButtons; i++) { drawMenuButton(i, pages[pageArray[i]].name, i == 0); }
-  }
-  else
-  {
-    int16_t newSelectedButton = selectedButton + getEncoderDirection(0);
-    if (newSelectedButton < 0) newSelectedButton = nrButtons - 1;
-    if (newSelectedButton > nrButtons - 1) newSelectedButton = 0;
-    if (newSelectedButton != selectedButton)
-    {
-      drawMenuButton(selectedButton, pages[pageArray[selectedButton]].name, false);
-      selectedButton = newSelectedButton;
-      drawMenuButton(selectedButton,  pages[pageArray[selectedButton]].name, true);
-    }
-    if (updateButton(0)) currentPage = pageArray[selectedButton];
-    if (updateButton(1)) currentPage = pages[currentPage].pageBack;
-  }
-}
-
 void drawMenuButton(uint8_t index, String text, bool selected)
 {
   uint8_t row = index % 5;
@@ -216,54 +197,53 @@ void drawMenuButton(uint8_t index, String text, bool selected)
   tft.print(text);
 }
 
-
 void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParameters, bool firstCall, bool forceVariableUpdate)
 {
   static int16_t selectedButton = 0;
-  float variables[nrParameters];
-
-  for (uint8_t i = 0; i < nrParameters; i++)
-  {
-    variables[i] = getValue(parameterArray[i]);
-    if (forceVariableUpdate && !firstCall) updateParameterRow(i, parameterArray[i]);
-  }
   
+  // draw statics on first call only
   if (firstCall)
   {
     tft.fillRect(0, PAGEINDICATOR_HEIGHT, HEADER_X - 1, NAV_AREA_HEIGHT , MAIN_BG_COLOR);
     selectedButton = 0;
     encoders[0].write(selectedButton);
     if (pages[currentPage].widget == W_LIST) for (uint8_t i = 0; i < nrParameters; i++) drawParameterRow(i, parameterArray[i], i == 0);
-    //else if (pages[currentPage].widget == W_POT) for (uint8_t i = 0; i < nrParameters; i++) drawPotWidget(i, parameterArray[i], i == 0, true);
-  }
-  else
-  {
-    int16_t newSelectedButton = selectedButton + getEncoderDirection(0);
-    if (newSelectedButton < 0) newSelectedButton = nrParameters - 1;
-    if (newSelectedButton > nrParameters - 1) newSelectedButton = 0;
-    if (newSelectedButton != selectedButton)
-    {
-      if (pages[currentPage].widget == W_LIST) drawParameterRow(selectedButton, parameterArray[selectedButton], false);
-      //else if (pages[currentPage].widget == W_POT) drawPotWidget(selectedButton, parameterArray[selectedButton], false, true);
-      selectedButton = newSelectedButton;
-      if (pages[currentPage].widget == W_LIST) drawParameterRow(selectedButton, parameterArray[selectedButton], true);
-      //else if (pages[currentPage].widget == W_POT) drawPotWidget(selectedButton, parameterArray[selectedButton], true, true);
-      encoders[1].write(0);
-    }
-
-    int16_t deltaBaseValue = encoders[1].read() / 4;
-    float newValue = 0.0;
-    if (abs(deltaBaseValue) > 0)
-    {
-      encoders[1].write(0);
-      newValue = constrain(variables[selectedButton] + deltaBaseValue * displayParameters[parameterArray[selectedButton]].multiplier, displayParameters[parameterArray[selectedButton]].minValue, displayParameters[parameterArray[selectedButton]].maxValue);
-      updateValue(parameterArray[selectedButton], newValue);
-      if (pages[currentPage].widget == W_LIST) updateParameterRow(selectedButton, parameterArray[selectedButton]);
-      //else if (pages[currentPage].widget == W_POT) drawPotWidget(selectedButton, parameterArray[selectedButton], true, false);
-    }
   }
   
-  if (updateButton(1)) currentPage = pages[currentPage].pageBack;
+  // update value if changed only
+  for (uint8_t i = 0; i < nrParameters; i++)
+  {
+    float currentValue = getValue(parameterArray[i]);
+    float displayedValue = displayedParameterValues[parameterArray[i]];
+    if (displayedValue != currentValue)
+    {
+      displayedParameterValues[parameterArray[i]] = currentValue;
+      updateParameterRow(i, parameterArray[i]);
+    }
+  }
+
+  // select row with encoder 0
+  int16_t newSelectedButton = selectedButton + getEncoderDirection(0);
+  if (newSelectedButton < 0) newSelectedButton = nrParameters - 1;
+  if (newSelectedButton > nrParameters - 1) newSelectedButton = 0;
+  if (newSelectedButton != selectedButton)
+  {
+    if (pages[currentPage].widget == W_LIST) drawParameterRow(selectedButton, parameterArray[selectedButton], false);
+    selectedButton = newSelectedButton;
+    if (pages[currentPage].widget == W_LIST) drawParameterRow(selectedButton, parameterArray[selectedButton], true);
+    encoders[1].write(0);
+  }
+
+  // update value with encoder 1
+  int16_t deltaBaseValue = encoders[1].read() / 4;
+  float newValue = 0.0;
+  if (abs(deltaBaseValue) > 0)
+  {
+    encoders[1].write(0);
+    newValue = constrain(displayedParameterValues[parameterArray[selectedButton]] + deltaBaseValue * displayParameters[parameterArray[selectedButton]].multiplier, displayParameters[parameterArray[selectedButton]].minValue, displayParameters[parameterArray[selectedButton]].maxValue);
+    updateValue(parameterArray[selectedButton], newValue);
+    if (pages[currentPage].widget == W_LIST) updateParameterRow(selectedButton, parameterArray[selectedButton]);
+  }
 }
 
 float getValue(uint8_t parameter)
@@ -293,6 +273,7 @@ void updateParameterRow(uint8_t index, uint8_t parameter)
    tft.drawRect(x1 + 1 , y1 + 1, VAR_VALUE_WIDTH - 2, BUTTON_HEIGHT - 2, ILI9341_BLUE);
    tft.setCursor(x1 + 8, y1 + textYpadding);
    tft.setTextColor(ILI9341_WHITE);
+   tft.setFont(Arial_12);
    float value = getValue(parameter);
    if (displayParameters[parameter].enumFunction != nullptr) tft.print(displayParameters[parameter].enumFunction(value));
    else tft.print(value, displayParameters[parameter].displayPrecision);
@@ -304,6 +285,9 @@ void handleSpecialPages(bool firstCall)
   {
     case PAGE_LISTDEVICES:
       displayDevicePage(firstCall);
+      break;
+    case PAGE_FILE:
+      displayFilePage(firstCall);
       break;
   }
 }
@@ -325,6 +309,68 @@ void displayDevicePage(bool firstCall)
     }
   }
   if (updateButton(1)) currentPage = pages[currentPage].pageBack;  
+}
+
+void displayFilePage(bool firstCall)
+{
+  static uint8_t fileNr = 0;
+  if (firstCall)
+  {
+    tft.fillRect(0, PAGEINDICATOR_HEIGHT, SCREEN_XRES - HEADER_WIDTH - 1, 160 , MAIN_BG_COLOR);
+    displayFileNr(fileNr);
+    displayLoadSave();
+  }
+  int newFileNr = fileNr + getEncoderDirection(0);
+  if (newFileNr > MAX_FILES - 1) newFileNr = 0;
+  if (newFileNr < 0) newFileNr = MAX_FILES - 1;
+  if ((uint8_t)newFileNr != fileNr)
+  {
+    fileNr = (uint8_t)newFileNr;
+    displayFileNr(fileNr);
+  }
+  if (updateButton(0))
+  {
+    loadFile(fileNr);
+    if (LPdisplayMode == LPMODE_PATTERN) LPsetPageFromTrackData();
+    if (LPdisplayMode == LPMODE_SONG)
+    {
+      setScene(0);
+      LPsetSceneButtonsSongMode(true);
+      LPsetPageFromArrangementData(true);
+    }
+    LPcopy_update(true, true);
+  }
+  if (updateButton(1)) saveFile(fileNr);
+}
+
+void displayFileNr(uint8_t fileNr)
+{
+   tft.fillRect(10, PAGEINDICATOR_HEIGHT + 30, 100, 19 , MAIN_BG_COLOR);
+   tft.setCursor(10, PAGEINDICATOR_HEIGHT + 30);
+   tft.setFont(Arial_18);
+   tft.setTextColor(ILI9341_WHITE);
+   tft.printf("ID: %02d", fileNr);
+   tft.setFont(Arial_12);
+}
+
+void displayLoadSave()
+{
+  const uint8_t radius = 30;
+  const uint8_t xLoad = 60; 
+  const uint8_t yLoad = 140;
+  const uint8_t xSave = xLoad + radius + 100;
+  const uint8_t ySave = yLoad;
+
+  tft.setTextColor(ILI9341_BLACK);
+  tft.setFont(Arial_14);
+  tft.fillCircle(xLoad, yLoad, radius, TFT_GREEN);
+  tft.setCursor(xLoad - radius + 5, yLoad - 5);
+  tft.print("LOAD");
+  tft.fillCircle(xSave, ySave, radius, TFT_RED);
+  tft.setCursor(xSave - radius + 5, ySave - 5);
+  tft.print("SAVE");
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setFont(Arial_12);
 }
 
 // PATTERN COPY DISPLAY FUNCTIONS
@@ -490,11 +536,17 @@ void updateLaunchpadUI()
   
   if ((LPdisplayMode == LPMODE_SONG) && (oldLPmode != LPMODE_SONG))
   {
-    LPsetPageFromArrangementData();
+    LPsetPageFromArrangementData(true);
     LPsetTrackButtonsSongMode(true);
+    LPsetSceneButtonsSongMode(true);
     oldLPmode = LPMODE_SONG;
   }
-   if (LPdisplayMode == LPMODE_SONG) LPsetTrackButtonsSongMode(false);
+   if (LPdisplayMode == LPMODE_SONG)
+   {
+    LPsetTrackButtonsSongMode(false);
+    LPsetPageFromArrangementData(false);
+    LPsetSceneButtonsSongMode(false);
+   }
 }
 
 void LPsetTrackButtonsSongMode(bool forceUpdate)
@@ -526,6 +578,17 @@ void LPsetTrackButtonsSongMode(bool forceUpdate)
   }
 }
 
+void LPsetSceneButtonsSongMode(bool forceUpdate)
+{
+  static uint8_t oldSelectedSceneId = 255;
+  if (oldSelectedSceneId != currentScene || forceUpdate)
+  {
+    oldSelectedSceneId = currentScene;
+    LP1.setRowColor(0, LP_GHOST);
+    if ( (currentScene < (8 + LP1.page * 8)) && (currentScene >= (LP1.page * 8)) ) LP1.setPadColor(11 + ( currentScene - LP1.page * 8) , SequencerData.sceneColors[currentScene]);
+  }
+}
+
 void LPtoggleMute(uint8_t trackId)
 {
   bool muteStatus = !tracks[trackId]->trackMuted;
@@ -534,16 +597,35 @@ void LPtoggleMute(uint8_t trackId)
   LPsetTrackButtonsSongMode(false);
 }
 
-void LPsetPageFromArrangementData() { for (uint8_t trackId = 0; trackId < 7; trackId++) LPsetTrackRowFromArrangementData(trackId); }
-
-void LPsetTrackRowFromArrangementData(uint8_t trackId)
+void LPsetPageFromArrangementData(bool forceUpdate)
 {
+  for (uint8_t trackId = 0; trackId < 7; trackId++) LPsetTrackRowFromArrangementData(trackId, forceUpdate);
+}
+
+void LPsetTrackRowFromArrangementData(uint8_t trackId, bool forceUpdate)
+{
+  static uint8_t patternStatuses[NR_TRACKS][NR_PATTERNS];
   for (uint8_t arrIndex = 0; arrIndex < NR_PATTERNS_IN_ARRANGEMENT; arrIndex++)
   {
-    uint8_t color = LP_OFF;
+    uint8_t color = tracks[trackId]->color;
     uint8_t padId = 21 + trackId * 10 + arrIndex;
-    if (arrangement[trackId][arrIndex] != ARR_NO_PATTERN) color = tracks[trackId]->color;
-    LP1.setPadColor(padId, color);
+    uint8_t currentPatternStatus = tracks[trackId]->getPatternStatus(arrIndex);
+    if ( ( currentPatternStatus != patternStatuses[trackId][arrIndex] ) || forceUpdate )
+    {
+      patternStatuses[trackId][arrIndex] = currentPatternStatus;
+      switch (currentPatternStatus)
+      {
+        case PATTERN_ACTIVE:
+          LP1.setPadColor(padId, color);
+          break;
+        case PATTERN_CUED:
+          LP1.setPadColorFlashing(padId, color);
+          break;
+        default:
+          LP1.setPadColor(padId, LP_OFF);
+          break;
+      }
+    }
   }
 }
 
@@ -572,19 +654,29 @@ void LPsetStepIndicator()
 void LPpageIncrease()
 {
   uint8_t ticksPerColumn = ticksPerBeat / LP1.xZoomLevel;
-  if ((LP1.page * 8 + 7) < (tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn) - 1))
+  if (LPdisplayMode == LPMODE_PATTERN && ((LP1.page * 8 + 7) < (tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn) - 1)))
   {
     LP1.page = LP1.page + 1;
     LPsetPageFromTrackData();
+  }
+  if ( (LPdisplayMode == LPMODE_SONG) && (LP1.page < NR_SCENES/8 ) )
+  {
+    LP1.page = LP1.page + 1;
+    LPsetSceneButtonsSongMode(true);
   }
 }
 
 void LPpageDecrease()
 {
-  if (LP1.page > 0)
+  if (LPdisplayMode == LPMODE_PATTERN && LP1.page > 0)
   {
     LP1.page = LP1.page - 1;
     LPsetPageFromTrackData();
+  }
+  if (LPdisplayMode == LPMODE_SONG && LP1.page > 0)
+  {
+    LP1.page = LP1.page - 1;
+    LPsetSceneButtonsSongMode(true);
   }
 }
 
@@ -593,7 +685,6 @@ void LPscrollUp()
   if (tracks[currentTrack]->lowerRow + LP1.yScrollStep < 127) tracks[currentTrack]->lowerRow = tracks[currentTrack]->lowerRow + LP1.yScrollStep;
   else tracks[currentTrack]->lowerRow = 120;
   LPsetPageFromTrackData();
-  //Serial.printf("Lower row: %d\n", tracks[currentTrack]->lowerRow);
 }
 
 void LPscrollDown()
@@ -601,7 +692,6 @@ void LPscrollDown()
   if (tracks[currentTrack]->lowerRow >= LP1.yScrollStep) tracks[currentTrack]->lowerRow = tracks[currentTrack]->lowerRow - LP1.yScrollStep;
   else tracks[currentTrack]->lowerRow = 0;
   LPsetPageFromTrackData();
-  //Serial.printf("Lower row: %d\n", tracks[currentTrack]->lowerRow);
 }
 
 void LPsetPageFromTrackData()
@@ -639,6 +729,7 @@ void setLPsongMode()
   uint8_t padStateArray[6] = {0, CCsongMode, LP_GREEN, 0, CCpatternMode, LP_OFF};
   LP1.setMultiplePadColorState(padStateArray, 6);
   LPdisplayMode = LPMODE_SONG;
+  LP1.page = 0;
 }
 
 void setLPpatternMode()
@@ -646,6 +737,7 @@ void setLPpatternMode()
   uint8_t padStateArray[6] = {0, CCsongMode, LP_OFF, 0, CCpatternMode, LP_GREEN};
   LP1.setMultiplePadColorState(padStateArray, 6);
   LPdisplayMode = LPMODE_PATTERN;
+  LP1.page = 0;
 }
 
 uint16_t lpColor2tftColor(uint8_t lpColor)
@@ -729,22 +821,27 @@ void updateMcp()
         //mcp.writePort(MCP23017Port::A, 8); // write leds, 1 = led lit
         break;
       case 4:
-        currentPage = PAGE_PATTERN;
+        currentPage = PAGE_SCENE;
         //mcp.writePort(MCP23017Port::A, 4);
         break;
       case 2:
-        currentPage = PAGE_EVENT;
+        currentPage = PAGE_PATTERN;
         //mcp.writePort(MCP23017Port::A, 2);
         break;
       case 1:
-        currentPage = PAGE_TRACK;
+        currentPage = PAGE_EVENT;
         //mcp.writePort(MCP23017Port::A, 1);
         break;
       case 16:
         currentPage = PAGE_FILE;
         //mcp.writePort(MCP23017Port::A, 16);
         break;
-       case 128:
+      case 32:
+        break;
+      case 64:
+        currentPage = PAGE_TRACK;
+        break;
+      case 128:
         currentPage = PAGE_LISTDEVICES;
         //mcp.writePort(MCP23017Port::A, 128);
         break;

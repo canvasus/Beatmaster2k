@@ -4,7 +4,6 @@
 #include <USBHost_t36.h>
 #include "launchPad.h"
 #include "track.h"
-//#include "voice.h"
 #include "ui.h"
 #include "sequencer.h"
 
@@ -14,6 +13,7 @@ void setupMidi();
 void locateUsbComponents();
 void getUsbDeviceName(uint8_t usbIndex, char * buf, uint8_t maxBufferSize);
 void configureLaunchPad(uint8_t driverIndex);
+void configureMidiInputDevices(uint8_t LP_index);
 void updateMidi();
 void deviceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
@@ -31,6 +31,8 @@ void midi3NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
 void midi3NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
 void midi4NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
 void midi4NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi5NoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity);
+void midi5NoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity);
 
 void LPNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void LPNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
@@ -61,9 +63,9 @@ void sendMidiStop();
 #define   CCscrollDown     92
 #define   CCpageDecrease   93
 #define   CCpageIncrease   94
-#define   CCsongMode       95
-#define   CCpatternMode    96
-#define   TBD97            97
+#define   CCsceneMode      95
+#define   CCsongMode       96
+#define   CCpatternMode    97
 #define   CCeditMode       98
 
 // Pads for pattern mode
