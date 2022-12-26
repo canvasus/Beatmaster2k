@@ -17,4 +17,5 @@ void loop()
 {
   updateMidi();
   updateUI();
+  updateSequencer();
 }

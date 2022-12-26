@@ -14,10 +14,18 @@ sequencerData SequencerData;
 
 uint8_t sequencerState      = STATE_STOPPED;
 uint8_t columnTimer         = 0;
-elapsedMicros tickTimer     = 0;
 uint16_t  oneTickUs         = 1000 * 60000 / (SequencerData.bpm * ticksPerBeat);
-int sequencerStep = -1;
-uint8_t sequencerEditMode = MODE_PATTERNEDIT;
+uint8_t sequencerEditMode   = MODE_PATTERNEDIT;
+uint8_t selectionId         = SELECTION_PATTERN;
+uint8_t actionId            = ACTION_COPY;
+int8_t toolTranspose        = 0;
+bool sendClock              = false;
+uint8_t playMode            = PLAYMODE_NONE;
+
+uint8_t currentTrack        = 0;
+uint8_t currentPattern      = 0;
+int16_t currentEvent        = -1;
+uint8_t currentScene        = 0;
 
 IntervalTimer sequencerUpdateTimer;
 
@@ -30,30 +38,37 @@ const String noYesSelected[] = {"No", "Yes", "Selected"};
 void initSequencer()
 {
   for (uint8_t sceneId = 0;sceneId < NR_SCENES; sceneId++) SequencerData.sceneColors[sceneId] = LP_GREEN;
+  for (uint8_t arrId = 0;arrId < NR_ARRPOSITIONS; arrId++) SequencerData.arrangement[arrId] = NO_SCENE;
   sequencerUpdateTimer.begin(tickTracks, oneTickUs); 
 }
 
 void tickTracks()
 {
+  static uint8_t fourthCounter = 0;
+  // 24 ppq
   if (sequencerState == STATE_RUNNING)
   {
-    //AudioNoInterrupts(); 
+    //if (fourthCounter == 0) LP1.setPadColor(CCindicator, LP_CYAN);
+    //if (fourthCounter == 1) LP1.setPadColor(CCindicator, LP_OFF);
     for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->tickTrack();
-    //AudioInterrupts();
+    //if (sendClock) sendMidiClock();
+    //fourthCounter++;
+    //if (fourthCounter > ( ticksPerBeat - 1 )) fourthCounter = 0;
   }
+  else fourthCounter = 0;
 }
 
 void startSequencer()
 {
-   //sendMidiStart();
+   if (sendClock) sendMidiStart();
    sequencerState = STATE_RUNNING;
 }
 
 void stopSequencer()
 {
-  //sendMidiStop();
+  if (sendClock) sendMidiStop();
+  LP1.setPadColor(CCindicator, LP_OFF);
   sequencerState = STATE_STOPPED;
-  sequencerStep = -1;
   resetTracks();
   flushTracksPlayedBuffers();
 }
@@ -66,6 +81,12 @@ void setBpm(float newBpm)
 }
 
 float getBpm() { return SequencerData.bpm; }
+
+float getPlaymode() { return (float)playMode; }
+void setPlaymode(float mode) { playMode = (uint8_t)mode; }
+
+void setMidiClockOnOff(float onOff) { sendClock = (bool)onOff; }
+float getMidiClockOnOff() { return sendClock; }
 
 void setTrackOutput(float value)
 {
@@ -101,8 +122,8 @@ String get0_16_note(uint8_t channel)
   else return "NoteVal";
 }
 
-float getTrackLengthColumns() { return (float)(tracks[currentTrack]->getPatternLengthColumns(LP1.xZoomLevel)); }
-void setTrackLengthColumns(float columns) { tracks[currentTrack]->setPatternLengthColumns((uint16_t)columns, LP1.xZoomLevel); }
+float getTrackLengthColumns() { return (float)(tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN)); }
+void setTrackLengthColumns(float columns) { tracks[currentTrack]->setPatternLengthColumns((uint16_t)columns, TICKS_PER_COLUMN); }
 
 float getTrackDefLength() { return (float)(tracks[currentTrack]->getTrackDefaultNoteLengthTicks()); }
 void setTrackDefLength(float length) { tracks[currentTrack]->setTrackDefaultNoteLengthTicks((uint16_t)length); }
@@ -212,5 +233,118 @@ float getSceneColor() { return SequencerData.sceneColors[currentScene]; }
 void setSceneColor(float color)
 {
   SequencerData.sceneColors[currentScene] = (uint8_t)color;
-  LPsetSceneButtonsSongMode(true);
+  LPsetSceneButtonsSceneMode(true);
+}
+
+void setToolSelection(float selection) { selectionId = (uint8_t)selection; }
+float getToolSelection() { return (float)selectionId; }
+String getSelectionEnum(uint8_t selection)
+{
+  switch (selection)
+  {
+    case SELECTION_PATTERN:
+      return "Pattern";
+      break;
+    case SELECTION_COLUMNS:
+      return "Columns";
+      break;
+    case SELECTION_VIEW:
+      return "View";
+      break;
+    default:
+      return "ERR";
+  }
+}
+
+void setToolAction(float action) {actionId = (uint8_t)action;}
+float getToolAction() { return (float)actionId;}
+String getActionEnum(uint8_t action)
+{
+  switch (action)
+  {
+    case ACTION_CLEAR:
+      return "Clear";
+      break;
+    case ACTION_COPY:
+      return "Copy";
+      break;
+    case ACTION_PASTE:
+      return "Paste";
+      break;
+    default:
+      return "ERR";
+  }
+}
+
+void setToolTranspose(float transpose) {toolTranspose = (int8_t)transpose;}
+float getToolTranspose() { return (float)toolTranspose;}
+
+void doToolAction()
+{
+  switch(actionId)
+  {
+    case ACTION_CLEAR:
+      clearSelection();
+      break;
+    case ACTION_COPY:
+      copySelection();
+      break;
+    case ACTION_PASTE:
+      pasteSelection();
+      break;
+  }
+}
+
+void copySelection()
+{
+  
+}
+
+void pasteSelection()
+{
+  
+}
+
+void clearSelection()
+{
+  if (selectionId == SELECTION_PATTERN) tracks[currentTrack]->clearPattern(tracks[currentTrack]->getActivePatternId());
+  else
+  {
+    uint16_t tickStart = (LP1.page * 8) * TICKS_PER_COLUMN;
+    uint16_t tickEnd = tickStart + 8 * TICKS_PER_COLUMN - 1;
+    if (selectionId == SELECTION_COLUMNS)
+    {
+      for(uint8_t note = 0; note < 128; note++) tracks[currentTrack]->removeEvents(tickStart, tickEnd, note);
+    }
+    if (selectionId == SELECTION_VIEW)
+    {
+      uint8_t noteStart = tracks[currentTrack]->lowerRow;
+      uint8_t noteEnd = noteStart + 8;
+      for(uint8_t note = noteStart; note <= noteEnd; note++) tracks[currentTrack]->removeEvents(tickStart, tickEnd, note);
+    }
+  }
+}
+
+void updateSequencer()
+{
+  if ( (sequencerState == STATE_RUNNING) && (playMode == PLAYMODE_CHAIN) ) updateSongMode();
+}
+
+void updateSongMode()
+{
+  // make sure all tracks are playing current scene
+  // then cue next scene once
+
+  bool allTracksInCurrentScene = true;
+  uint8_t sceneId = SequencerData.arrangement[currentScene];
+  
+  for (uint8_t trackId = 0; trackId < NR_TRACKS; trackId++)
+  {
+    if (tracks[trackId]->getActivePatternId() != SequencerData.scenes[trackId][sceneId]) allTracksInCurrentScene = false;
+  }
+  
+  if ( allTracksInCurrentScene && (SequencerData.arrangement[currentScene + 1] != NO_SCENE) )
+  {
+    setSceneNr(currentScene + 1); //cues next scene
+  }
 }

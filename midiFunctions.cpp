@@ -85,8 +85,6 @@ void configureLaunchPad(uint8_t driverIndex)
   Serial.print(F("Initializing LP @ port: "));
   Serial.println(driver_names[driverIndex]);
   LP1.setProgrammerMode();
-  //delay(500);
-  //LP1.setProgrammerMode();
 }
 
 void configureMidiInputDevices(uint8_t LP_index)
@@ -156,30 +154,35 @@ void updateMidi()
 void sendMidiClock()
 {
   MIDI.sendClock();
-  //midi1.sendRealTime(usbMIDI.Clock);
-  //midi2.sendRealTime(usbMIDI.Clock);
-  //midi3.sendRealTime(usbMIDI.Clock);
-  //midi4.sendRealTime(usbMIDI.Clock);
+  for (uint8_t index = 0; index < CNT_DEVICES; index++)
+  {
+    if (*midiDrivers[index]) midiDrivers[index]->sendRealTime(usbMIDI.Clock);
+  }
 }
 
 void sendMidiStart()
 {
   MIDI.sendStart();
+  for (uint8_t index = 0; index < CNT_DEVICES; index++)
+  {
+    if (*midiDrivers[index]) midiDrivers[index]->sendRealTime(usbMIDI.Start);
+  }
 }
 
 void sendMidiStop()
 {
   MIDI.sendStop();
+  for (uint8_t index = 0; index < CNT_DEVICES; index++)
+  {
+    if (*midiDrivers[index]) midiDrivers[index]->sendRealTime(usbMIDI.Stop);
+  }
 }
 
 
 void LPNoteOn(byte channel, byte note, byte velocity)
 {
-  //Serial.print("LP note ON: ");
-  //Serial.println(note, DEC);
   uint8_t padColumn = LPnoteToPadColumn(note) + LP1.page * 8;
-  uint8_t ticksPerColumn =  24 / LP1.xZoomLevel;
-  uint16_t tickTemp = padColumn * ticksPerColumn;
+  uint16_t tickTemp = padColumn * TICKS_PER_COLUMN;
   uint8_t lowerRow = tracks[currentTrack]->lowerRow;
   uint8_t padRow = LPnoteToPadRow(note);
    
@@ -189,14 +192,14 @@ void LPNoteOn(byte channel, byte note, byte velocity)
       uint8_t padState = 0;
       bool auditTrack = true; //sequencerState == STATE_STOPPED;
 
-      if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + ticksPerColumn - 1 , lowerRow + padRow) == 0) // no matching events
+      if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + TICKS_PER_COLUMN - 1 , lowerRow + padRow) == 0) // no matching events
       {
         tracks[currentTrack]->addEvent(tickTemp, lowerRow + padRow, tracks[currentTrack]->getTrackDefaultVelocity(), tracks[currentTrack]->getTrackDefaultNoteLengthTicks(), auditTrack);
         padState = tracks[currentTrack]->color;
       }
       else
       {
-        tracks[currentTrack]->removeEvents(tickTemp, tickTemp + ticksPerColumn -1, lowerRow + padRow);
+        tracks[currentTrack]->removeEvents(tickTemp, tickTemp + TICKS_PER_COLUMN -1, lowerRow + padRow);
         padState = LP_OFF;
       }
       LPcopy_updateSingleEvent_converter(note, padState);
@@ -208,7 +211,7 @@ void LPNoteOn(byte channel, byte note, byte velocity)
     currentEvent = tracks[currentTrack]->getEventId(tickTemp, lowerRow + padRow);
   }
 
-  if  ( ( LPdisplayMode == LPMODE_SONG ) && (velocity > 0) )
+  if  ( ( LPdisplayMode == LPMODE_SCENE ) && (velocity > 0) )
   {
     // add / remove patterns
     bool inPatternRange =  (velocity > 0 && note >= 21 && note <= 88); // in pattern range
@@ -228,99 +231,34 @@ void LPNoteOn(byte channel, byte note, byte velocity)
       currentScene = LP1.page * 8 + note - 11;
       setScene(currentScene);
     }
-    
+  }
+
+  if  ( ( LPdisplayMode == LPMODE_SONG ) && (velocity > 0) )
+  {
+    static uint8_t currentArrScene = 255;
+    static uint8_t arrIndex = 0;
+
+    bool inArrangementRange =  (velocity > 0 && note >= 21 && note <= 88); // in arrangement range
+    if (inArrangementRange)
+    {
+      uint8_t row = LPnoteToPadRow(note);
+      uint8_t column = LPnoteToPadColumn(note);
+      arrIndex = 56 - row * 8  + column;
+      Serial.printf("R: %d, C: %d, Arr: %d \n", row, column, arrIndex);
+      SequencerData.arrangement[arrIndex] = currentArrScene;
+    }
+
+    bool inSceneRange =  (velocity > 0 && note >= 11 && note <= 18); // in scene range
+    if (inSceneRange)
+    {
+      currentArrScene = LP1.page * 8 + note - 11;
+    }
   }
 }
 
-  
-//
-//  if (displayMode == DISPLAYMODE_PATTERNSELECT)
-//  {
-//    bool inPatternRange =  (velocity > 0 && note >= 21 && note <= 68); // in pattern range
-//    //if clear noteOn - > set clearArmed
-//    //if clearArmed and in patternPad range --> execute clear
-//    if (note == notePatternClear) clearRequestArmed = true;
-//    if (note == notePatternCopy) copyRequestArmed = true;
-//    if (copyRequestArmed && clearRequestArmed)
-//    {
-//      copyRequestArmed = false;
-//      clearRequestArmed = false;
-//    }
-//    if (clearRequestArmed)
-//    {
-//      LP1.setPadColorFlashing(notePatternClear, LP_RED); // clear pattern flashing
-//      renderNotification("CLEAR");
-//    }
-//    if (copyRequestArmed)
-//    {
-//      LP1.setPadColorFlashing(notePatternCopy, LP_ORANGE);
-//      renderNotification("COPY");
-//    }
-//    
-//    if (inPatternRange) //(velocity > 0 && note >= 21 && note <= 68) 
-//    {
-//      uint8_t padColumn = LPnoteToPadColumn(note);
-//      uint8_t padRow = LPnoteToPadRow(note);
-//      uint8_t trackId = padRow - 1;
-//      uint8_t patternId = padColumn;
-//
-//      if (!clearRequestArmed && !copyRequestArmed)
-//      {
-//        if (sequencerState == STATE_STOPPED) tracks[trackId]-> setPatternId(patternId);
-//        if (sequencerState == STATE_RUNNING) tracks[trackId]-> cuePatternId(patternId);
-//        renderPatternPage();
-//      }
-//      
-//      if (clearRequestArmed) // clear armed and note in range --> clear selected pattern
-//      {
-//        tracks[trackId]->clearPattern(patternId);
-//      }
-//
-//      if (copyRequestArmed)
-//      {
-//        if (copyRequestSourceSelected)
-//        {
-//          copyPattern(copySourceTrackId, copySourcePatternId, trackId, patternId);
-//          copySourceTrackId = 0;
-//          copySourcePatternId = 0;
-//          copyRequestSourceSelected = false;
-//          copyRequestArmed = false;
-//          LP1.setPadColor(notePatternCopy, LP_ORANGE);
-//        }
-//        else
-//        {
-//          copySourceTrackId = trackId;
-//          copySourcePatternId = patternId;
-//          copyRequestSourceSelected = true;
-//        }
-//      }
-//    }
-//  }
-//}
-
 void LPNoteOff(byte channel, byte note, byte velocity)
 {
-  //Serial.print("LP note OFF: ");
-  //Serial.println(note, DEC);
-//  if (LPdisplayMode == DISPLAYMODE_PATTERNSELECT)
-//  {
-//    switch (note)
-//    {
-//      case notePatternClear:
-//        clearRequestArmed = false;
-//        LP1.setPadColor(notePatternClear, LP_RED);
-//        renderNotification("     ");
-//        break;
-//      case notePatternCopy:
-//        copySourceTrackId = 0;
-//        copySourcePatternId = 0;
-//        copyRequestSourceSelected = false;
-//        copyRequestArmed = false;
-//        LP1.setPadColor(notePatternCopy, LP_ORANGE);
-//        renderNotification("     ");
-//        break;
-//    }
-//  }
+  
 }
 
 void LPControlChange(byte channel, byte control, byte value)
@@ -338,7 +276,7 @@ void LPControlChange(byte channel, byte control, byte value)
       case CCtrack5:
       case CCtrack6:
       case CCtrack7:
-        if (LPdisplayMode == LPMODE_SONG) LPtoggleMute(trackTemp);
+        if (LPdisplayMode == LPMODE_SCENE) LPtoggleMute(trackTemp);
         else setCurrentTrack(trackTemp);
         break;
       case CCstartStop:
@@ -386,6 +324,9 @@ void LPControlChange(byte channel, byte control, byte value)
       case CCsongMode:
         setLPsongMode();
         break;
+      case CCsceneMode:
+        setLPsceneMode();
+        break;
       case CCpatternMode:
         setLPpatternMode();
         break;
@@ -408,5 +349,17 @@ void LPControlChange(byte channel, byte control, byte value)
         LP1.setPadColor(CCpageIncrease, LP_OFF);
          break;
     }
+  }
+}
+
+void updateIndicator(uint8_t state)
+{
+  static bool lastIndicatorState = false;
+  bool indicatorState = state && !lastIndicatorState;
+  if (lastIndicatorState != indicatorState)
+  {
+    lastIndicatorState = indicatorState;
+    if (indicatorState) LP1.setPadColor(CCindicator, LP_CYAN);
+    else LP1.setPadColor(CCindicator, LP_OFF);
   }
 }

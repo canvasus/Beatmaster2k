@@ -5,22 +5,20 @@ Encoder encoders[2] = {Encoder(ROT1_A, ROT1_B), Encoder(ROT2_A, ROT2_B)};
 Bounce bouncers[2] = {Bounce(ROT1_SW, 5), Bounce(ROT2_SW, 5)}; 
 MCP23017 mcp = MCP23017(MCP23017_ADDR, Wire1);
 
-uint8_t currentTrack = 0;
-uint8_t currentPattern = 0;
-int16_t currentEvent = -1;
-uint8_t currentScene = 0;
+
 uint8_t currentPage = PAGE_SONG;
 uint8_t LPdisplayMode = LPMODE_PATTERN;
 
-//                      .pageType    .name       .pageBack   .nrChildren  .children  .widget
+//                      .pageType    .name       .nrChildren  .children
 const page pages[] = {
-                      {PAGE_PAR,      "SONG",     PAGE_SONG,  1,         {SONG_BPM}, W_LIST},
-                      {PAGE_PAR,      "PATTERN",  PAGE_PATTERN,  4,      {PATTERN_NR, PATTERN_LENGTH, PATTERN_SPEED, PATTERN_EVENTLENGTHDEF}, W_LIST},
-                      {PAGE_PAR,      "EVENT",    PAGE_EVENT, 1,         {EVENT_LENGTH}, W_LIST},
-                      {PAGE_PAR,      "TRACK",    PAGE_TRACK,  3,        {TRACK_CHANNEL, TRACK_OUTPUT, TRACK_TRANSPOSESTATUS}, W_LIST},
-                      {PAGE_FILE,     "FILE",     PAGE_FILE,  0,         {}, W_NONE},
-                      {PAGE_LISTDEVICES,  "USBDEV",      PAGE_LISTDEVICES,  1,         {}, W_LIST},
-                      {PAGE_PAR,      "SCENE",    PAGE_SCENE, 2,         {SCENE_NR, SCENE_COLOR}, W_LIST}
+                      {PAGE_PAR,      "SONG",     3,          {SONG_BPM, SONG_PLAYMODE, MIDI_CLOCK}},
+                      {PAGE_PAR,      "PATTERN",  4,          {PATTERN_NR, PATTERN_LENGTH, PATTERN_SPEED, PATTERN_EVENTLENGTHDEF}},
+                      {PAGE_PAR,      "EVENT",    1,          {EVENT_LENGTH}},
+                      {PAGE_PAR,      "TRACK",    3,          {TRACK_CHANNEL, TRACK_OUTPUT, TRACK_TRANSPOSESTATUS}},
+                      {PAGE_FILE,     "FILE",     0,          {}},
+                      {PAGE_LISTDEVICES,  "USBDEV",    1,     {}},
+                      {PAGE_PAR,      "SCENE",    2,          {SCENE_NR, SCENE_COLOR}},
+                      {PAGE_TOOLS,    "TOOLS",    3,          {TOOLS_SELECTION, TOOLS_ACTION, TOOLS_TRANSPOSE}}
                
 };
 
@@ -36,7 +34,13 @@ const parameters displayParameters[] = {
                                          {"REC.TRP",  0,        2,         1,         0,    &getTransposeStatus, &setTransposeStatus, &getNoYesSelectedEnum},
                                          {"NR",       0,        7,         1,         0,    &getTrackPatternNr, &setTrackPatternNr, nullptr},
                                          {"NR",       0,        15,        1,         0,    &getSceneNr, &setSceneNr, nullptr},
-                                         {"COLOR",    0,        127,       1,         0,    &getSceneColor, &setSceneColor, nullptr}
+                                         {"COLOR",    0,        127,       1,         0,    &getSceneColor, &setSceneColor, nullptr},
+
+                                         {"SELECTN",  0,        2,         1,         0,    &getToolSelection, &setToolSelection, getSelectionEnum},
+                                         {"ACTION",   0,        2,         1,         0,    &getToolAction, &setToolAction, getActionEnum},
+                                         {"TRANSP",   -24,      24,        1,         0,    &getToolTranspose, &setToolTranspose, nullptr},
+                                         {"MIDI CLK", 0,        1,         1,         0,    &getMidiClockOnOff, &setMidiClockOnOff, &getNoYesSelectedEnum},
+                                         {"CHAIN",    0,        1,         1,         0,    &getPlaymode, &setPlaymode, &getNoYesSelectedEnum}
                                         };
 
                                         
@@ -161,10 +165,9 @@ bool updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCal
     tft.printf("%03d", bpm);
     oldBpm = bpm;
   }
-  if ( (oldLPpage != LP1.page) || (oldTrackColumns !=  tracks[currentTrack]->getPatternLengthColumns(24 / LP1.xZoomLevel)))
+  if ( (oldLPpage != LP1.page) || (oldTrackColumns !=  tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN)))
   {
-    uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
-    uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn);
+    uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN);
     oldLPpage = LP1.page;
     oldTrackColumns = trackColumns;
   }
@@ -207,7 +210,7 @@ void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParamet
     tft.fillRect(0, PAGEINDICATOR_HEIGHT, HEADER_X - 1, NAV_AREA_HEIGHT , MAIN_BG_COLOR);
     selectedButton = 0;
     encoders[0].write(selectedButton);
-    if (pages[currentPage].widget == W_LIST) for (uint8_t i = 0; i < nrParameters; i++) drawParameterRow(i, parameterArray[i], i == 0);
+    for (uint8_t i = 0; i < nrParameters; i++) drawParameterRow(i, parameterArray[i], i == 0);
   }
   
   // update value if changed only
@@ -228,9 +231,9 @@ void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParamet
   if (newSelectedButton > nrParameters - 1) newSelectedButton = 0;
   if (newSelectedButton != selectedButton)
   {
-    if (pages[currentPage].widget == W_LIST) drawParameterRow(selectedButton, parameterArray[selectedButton], false);
+    drawParameterRow(selectedButton, parameterArray[selectedButton], false);
     selectedButton = newSelectedButton;
-    if (pages[currentPage].widget == W_LIST) drawParameterRow(selectedButton, parameterArray[selectedButton], true);
+    drawParameterRow(selectedButton, parameterArray[selectedButton], true);
     encoders[1].write(0);
   }
 
@@ -242,7 +245,7 @@ void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParamet
     encoders[1].write(0);
     newValue = constrain(displayedParameterValues[parameterArray[selectedButton]] + deltaBaseValue * displayParameters[parameterArray[selectedButton]].multiplier, displayParameters[parameterArray[selectedButton]].minValue, displayParameters[parameterArray[selectedButton]].maxValue);
     updateValue(parameterArray[selectedButton], newValue);
-    if (pages[currentPage].widget == W_LIST) updateParameterRow(selectedButton, parameterArray[selectedButton]);
+    updateParameterRow(selectedButton, parameterArray[selectedButton]);
   }
 }
 
@@ -289,6 +292,9 @@ void handleSpecialPages(bool firstCall)
     case PAGE_FILE:
       displayFilePage(firstCall);
       break;
+    case PAGE_TOOLS:
+      displayToolsPage(firstCall);
+      break;
   }
 }
 
@@ -308,7 +314,6 @@ void displayDevicePage(bool firstCall)
       tft.print(buf);
     }
   }
-  if (updateButton(1)) currentPage = pages[currentPage].pageBack;  
 }
 
 void displayFilePage(bool firstCall)
@@ -332,13 +337,14 @@ void displayFilePage(bool firstCall)
   {
     loadFile(fileNr);
     if (LPdisplayMode == LPMODE_PATTERN) LPsetPageFromTrackData();
-    if (LPdisplayMode == LPMODE_SONG)
+    if (LPdisplayMode == LPMODE_SCENE)
     {
       setScene(0);
-      LPsetSceneButtonsSongMode(true);
-      LPsetPageFromArrangementData(true);
+      LPsetSceneButtonsSceneMode(true);
+      LPsetPageFromSceneData(true);
     }
     LPcopy_update(true, true);
+    setBpm(SequencerData.bpm);
   }
   if (updateButton(1)) saveFile(fileNr);
 }
@@ -355,23 +361,31 @@ void displayFileNr(uint8_t fileNr)
 
 void displayLoadSave()
 {
-  const uint8_t radius = 30;
-  const uint8_t xLoad = 60; 
-  const uint8_t yLoad = 140;
-  const uint8_t xSave = xLoad + radius + 100;
-  const uint8_t ySave = yLoad;
+  displayEncoderButtonHint(0, "LOAD", TFT_GREEN);
+  displayEncoderButtonHint(1, "SAVE", TFT_RED);
+}
+
+void displayEncoderButtonHint(uint8_t encoder, String hint, uint16_t color)
+{
+  const uint8_t radius = 25;
+  const uint8_t y = 160;
+  const uint8_t x = 60 +  encoder * (radius + 100);
 
   tft.setTextColor(ILI9341_BLACK);
-  tft.setFont(Arial_14);
-  tft.fillCircle(xLoad, yLoad, radius, TFT_GREEN);
-  tft.setCursor(xLoad - radius + 5, yLoad - 5);
-  tft.print("LOAD");
-  tft.fillCircle(xSave, ySave, radius, TFT_RED);
-  tft.setCursor(xSave - radius + 5, ySave - 5);
-  tft.print("SAVE");
-  tft.setTextColor(ILI9341_WHITE);
   tft.setFont(Arial_12);
+  tft.fillCircle(x, y, radius, color);
+  tft.setCursor(x - radius + 5, y - 5);
+  tft.print(hint);
+  tft.setTextColor(ILI9341_WHITE);
 }
+
+void displayToolsPage(bool firstCall)
+{
+  updateParameterPage(pages[PAGE_TOOLS].children, pages[PAGE_TOOLS].nrChildren, firstCall, false);
+  if (firstCall) displayEncoderButtonHint(0, "EXEC", TFT_RED);
+  if (updateButton(0)) doToolAction();
+}
+
 
 // PATTERN COPY DISPLAY FUNCTIONS
 // ******************************************** 
@@ -383,8 +397,8 @@ void LPcopy_update(bool firstCall, bool forceVariableUpdate)
   static uint8_t oldTrack = 255;
   static uint8_t oldPage = 0;
   static uint8_t oldLowerRow = 0;
-  uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
-  uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn);
+  //uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
+  uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN);
   uint8_t maxPages = trackColumns/8 + !!(trackColumns%8);
   if (firstCall)
   {
@@ -436,8 +450,8 @@ void LPcopy_drawBackground(uint8_t nrPages)
 
 void LPcopy_setSelectedPage()
 {
-  uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
-  uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn);
+  //uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
+  uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN);
   uint8_t maxPages = trackColumns/8 + !!(trackColumns%8);
   for (uint8_t page = 0; page < maxPages; page++)
   {
@@ -449,22 +463,22 @@ void LPcopy_setSelectedPage()
 
 void LPcopy_updateAllEvents()
 {
-  uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
-  uint8_t maxTrackColumns = tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn);
+  //uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
+  uint8_t maxTrackColumns = tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN);
   for (uint8_t trackColumn = 0; trackColumn < maxTrackColumns; trackColumn++) { LPcopy_updateColumn(trackColumn); }
 }
 
 void LPcopy_updateColumn(uint8_t trackColumn)
 {
   uint8_t padState = LP_OFF;
-  uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
+  //uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
   uint8_t page =  trackColumn/8;// + !!(trackColumn%8);
-  uint16_t tickTemp = trackColumn * ticksPerColumn;
+  uint16_t tickTemp = trackColumn * TICKS_PER_COLUMN;
   uint8_t lowerRow = tracks[currentTrack]->lowerRow;
   for (uint8_t row = 0; row < 8; row++)
   {
     padState = LP_OFF;
-    if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + ticksPerColumn - 1 , lowerRow + row) > 0) padState = tracks[currentTrack]->color;
+    if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + TICKS_PER_COLUMN - 1 , lowerRow + row) > 0) padState = tracks[currentTrack]->color;
     LPcopy_updateSingleEvent(page, (trackColumn - page * 8), row, padState);
   }
 }
@@ -487,8 +501,8 @@ void LPcopy_updateSingleEvent(uint8_t page, uint8_t column, uint8_t row, uint8_t
 void LPcopy_setStepIndicator()
 {
   static uint8_t previousColumn = 0;
-  uint16_t  ticksPerColumn = ticksPerBeat/LP1.xZoomLevel;
-  uint8_t column = tracks[currentTrack]->getCurrentColumn(ticksPerColumn);
+  //uint16_t  ticksPerColumn = ticksPerBeat/LP1.xZoomLevel;
+  uint8_t column = tracks[currentTrack]->getCurrentColumn(TICKS_PER_COLUMN);
  
   if (column != previousColumn)
   {
@@ -511,8 +525,7 @@ void LPinit()
 {
   LP1.setPadColor(CCstartStop, LP_RED);
   LP1.setPadColor(CCeditMode, LP_RED);
-  LP1.setPadColor(CCpatternMode, LP_GREEN);
-  LP1.setPadColor(CCsongMode, LP_OFF);
+  setLPpatternMode();
 }
 
 void updateLaunchpadUI()
@@ -534,22 +547,48 @@ void updateLaunchpadUI()
     if (sequencerState == STATE_RUNNING) LPsetStepIndicator();
   }
   
-  if ((LPdisplayMode == LPMODE_SONG) && (oldLPmode != LPMODE_SONG))
+  if ((LPdisplayMode == LPMODE_SCENE))
   {
-    LPsetPageFromArrangementData(true);
-    LPsetTrackButtonsSongMode(true);
-    LPsetSceneButtonsSongMode(true);
-    oldLPmode = LPMODE_SONG;
+    LPsetPageFromSceneData(oldLPmode != LPMODE_SCENE);
+    LPsetTrackButtonsSceneMode(oldLPmode != LPMODE_SCENE);
+    LPsetSceneButtonsSceneMode(oldLPmode != LPMODE_SCENE);
+    oldLPmode = LPMODE_SCENE;
   }
-   if (LPdisplayMode == LPMODE_SONG)
+ 
+   if ((LPdisplayMode == LPMODE_SONG))
    {
-    LPsetTrackButtonsSongMode(false);
-    LPsetPageFromArrangementData(false);
-    LPsetSceneButtonsSongMode(false);
+      LPsetPageFromSongData(oldLPmode != LPMODE_SONG);
+      LPsetSceneButtonsSongMode(oldLPmode != LPMODE_SONG);
+      oldLPmode = LPMODE_SONG;
    }
 }
 
-void LPsetTrackButtonsSongMode(bool forceUpdate)
+void LPsetPageFromSongData(bool forceUpdate)
+{
+  static uint8_t oldArrangement[NR_ARRPOSITIONS];
+
+  for (uint8_t arrId = 0;arrId < NR_ARRPOSITIONS; arrId++)
+  {
+    if(SequencerData.arrangement[arrId] != oldArrangement[arrId] || forceUpdate)
+    {
+      oldArrangement[arrId] = SequencerData.arrangement[arrId];
+      uint8_t row = 8 - arrId / 8;
+      uint8_t column = arrId % 8;
+      uint8_t padId = 10 * row + 1 + column;
+      //Serial.printf("R: %d, C: %d, Pad: %d\n", row, column, padId);
+      if (SequencerData.arrangement[arrId] != NO_SCENE)
+      {
+        uint8_t sceneId = SequencerData.arrangement[arrId];
+        uint8_t color = SequencerData.sceneColors[sceneId];
+        LP1.setPadColor(padId, color);
+      }
+      else LP1.setPadColor(padId, LP_OFF);
+    }
+  }
+}
+
+
+void LPsetTrackButtonsSceneMode(bool forceUpdate)
 {
   static uint8_t muteStatus[7] = {5,5,5,5,5,5,5};
   for (uint8_t trackId = 0; trackId < 7; trackId++)
@@ -580,6 +619,18 @@ void LPsetTrackButtonsSongMode(bool forceUpdate)
 
 void LPsetSceneButtonsSongMode(bool forceUpdate)
 {
+  if (forceUpdate)
+  {
+    for (uint8_t column = 0; column < 8; column++)
+    {
+      uint8_t sceneId = constrain(column + LP1.page *8, 0, NR_SCENES);
+      LP1.setPadColor(11 +  column, SequencerData.sceneColors[sceneId]);
+    }
+  }
+}
+
+void LPsetSceneButtonsSceneMode(bool forceUpdate)
+{
   static uint8_t oldSelectedSceneId = 255;
   if (oldSelectedSceneId != currentScene || forceUpdate)
   {
@@ -594,18 +645,18 @@ void LPtoggleMute(uint8_t trackId)
   bool muteStatus = !tracks[trackId]->trackMuted;
   if (sequencerState == STATE_RUNNING) tracks[trackId]->cueMuteStatus(muteStatus);
   else tracks[trackId]->trackMuted = muteStatus;
-  LPsetTrackButtonsSongMode(false);
+  LPsetTrackButtonsSceneMode(false);
 }
 
-void LPsetPageFromArrangementData(bool forceUpdate)
+void LPsetPageFromSceneData(bool forceUpdate)
 {
-  for (uint8_t trackId = 0; trackId < 7; trackId++) LPsetTrackRowFromArrangementData(trackId, forceUpdate);
+  for (uint8_t trackId = 0; trackId < 7; trackId++) LPsetTrackRowFromSceneData(trackId, forceUpdate);
 }
 
-void LPsetTrackRowFromArrangementData(uint8_t trackId, bool forceUpdate)
+void LPsetTrackRowFromSceneData(uint8_t trackId, bool forceUpdate)
 {
   static uint8_t patternStatuses[NR_TRACKS][NR_PATTERNS];
-  for (uint8_t arrIndex = 0; arrIndex < NR_PATTERNS_IN_ARRANGEMENT; arrIndex++)
+  for (uint8_t arrIndex = 0; arrIndex < NR_PATTERNS; arrIndex++)
   {
     uint8_t color = tracks[trackId]->color;
     uint8_t padId = 21 + trackId * 10 + arrIndex;
@@ -632,8 +683,7 @@ void LPsetTrackRowFromArrangementData(uint8_t trackId, bool forceUpdate)
 void LPsetStepIndicator()
 {
   static uint8_t previousColumn = 0;
-  uint16_t  ticksPerColumn = ticksPerBeat/LP1.xZoomLevel;
-  uint8_t column = tracks[currentTrack]->getCurrentColumn(ticksPerColumn);
+  uint8_t column = tracks[currentTrack]->getCurrentColumn(TICKS_PER_COLUMN);
   // check if currentColumn is in range of current page
   if (column != previousColumn)
   {
@@ -653,17 +703,22 @@ void LPsetStepIndicator()
 
 void LPpageIncrease()
 {
-  uint8_t ticksPerColumn = ticksPerBeat / LP1.xZoomLevel;
-  if (LPdisplayMode == LPMODE_PATTERN && ((LP1.page * 8 + 7) < (tracks[currentTrack]->getPatternLengthColumns(ticksPerColumn) - 1)))
+  if (LPdisplayMode == LPMODE_PATTERN && ((LP1.page * 8 + 7) < (tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN) - 1)))
   {
     LP1.page = LP1.page + 1;
     LPsetPageFromTrackData();
+  }
+  if ( (LPdisplayMode == LPMODE_SCENE) && (LP1.page < NR_SCENES/8 ) )
+  {
+    LP1.page = LP1.page + 1;
+    LPsetSceneButtonsSceneMode(true);
   }
   if ( (LPdisplayMode == LPMODE_SONG) && (LP1.page < NR_SCENES/8 ) )
   {
     LP1.page = LP1.page + 1;
     LPsetSceneButtonsSongMode(true);
   }
+  
 }
 
 void LPpageDecrease()
@@ -673,25 +728,31 @@ void LPpageDecrease()
     LP1.page = LP1.page - 1;
     LPsetPageFromTrackData();
   }
-  if (LPdisplayMode == LPMODE_SONG && LP1.page > 0)
+  if ( ((LPdisplayMode == LPMODE_SCENE) || (LPdisplayMode == LPMODE_SONG)) && LP1.page > 0)
   {
     LP1.page = LP1.page - 1;
-    LPsetSceneButtonsSongMode(true);
+    LPsetSceneButtonsSceneMode(true);
   }
 }
 
 void LPscrollUp()
 {
-  if (tracks[currentTrack]->lowerRow + LP1.yScrollStep < 127) tracks[currentTrack]->lowerRow = tracks[currentTrack]->lowerRow + LP1.yScrollStep;
-  else tracks[currentTrack]->lowerRow = 120;
-  LPsetPageFromTrackData();
+  if (LPdisplayMode == LPMODE_PATTERN)
+  {
+    if (tracks[currentTrack]->lowerRow + LP1.yScrollStep < 127) tracks[currentTrack]->lowerRow = tracks[currentTrack]->lowerRow + LP1.yScrollStep;
+    else tracks[currentTrack]->lowerRow = 120;
+    LPsetPageFromTrackData();
+  }
 }
 
 void LPscrollDown()
 {
-  if (tracks[currentTrack]->lowerRow >= LP1.yScrollStep) tracks[currentTrack]->lowerRow = tracks[currentTrack]->lowerRow - LP1.yScrollStep;
-  else tracks[currentTrack]->lowerRow = 0;
-  LPsetPageFromTrackData();
+  if (LPdisplayMode == LPMODE_PATTERN)
+  {
+    if (tracks[currentTrack]->lowerRow >= LP1.yScrollStep) tracks[currentTrack]->lowerRow = tracks[currentTrack]->lowerRow - LP1.yScrollStep;
+    else tracks[currentTrack]->lowerRow = 0;
+    LPsetPageFromTrackData();
+  }
 }
 
 void LPsetPageFromTrackData()
@@ -703,8 +764,7 @@ void LPsetColumnFromTrackData(uint8_t padColumn)
 {
   // This function considers which page is currently displayed so only call with column 0 - 7.
   uint8_t padStateArray[24];
-  uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
-  uint16_t tickTemp = (padColumn + LP1.page * 8) * ticksPerColumn;
+  uint16_t tickTemp = (padColumn + LP1.page * 8) * TICKS_PER_COLUMN;
   uint8_t lowerRow = tracks[currentTrack]->lowerRow;
   
   for (uint8_t row = 0; row < 8; row++)
@@ -713,9 +773,9 @@ void LPsetColumnFromTrackData(uint8_t padColumn)
     uint8_t padId = 11 + padColumn + row * 10;
     //note: pad row 0 represents note value (lowerRow)
    
-    if ((row == 0) && (lowerRow > 0) && (tracks[currentTrack]->getEventsInTickNoteInterval(tickTemp, tickTemp + ticksPerColumn - 1, 0, lowerRow - 1) > 0)) padState = LP_GHOST;         // notes below current column
-    if ((row == 7) && (lowerRow < 120) && (tracks[currentTrack]->getEventsInTickNoteInterval(tickTemp, tickTemp + ticksPerColumn - 1, lowerRow + 7 + 1, 127) > 0)) padState = LP_GHOST; // notes above current column
-    if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + ticksPerColumn - 1 , lowerRow + row) > 0) padState = tracks[currentTrack]->color;
+    if ((row == 0) && (lowerRow > 0) && (tracks[currentTrack]->getEventsInTickNoteInterval(tickTemp, tickTemp + TICKS_PER_COLUMN - 1, 0, lowerRow - 1) > 0)) padState = LP_GHOST;         // notes below current column
+    if ((row == 7) && (lowerRow < 120) && (tracks[currentTrack]->getEventsInTickNoteInterval(tickTemp, tickTemp + TICKS_PER_COLUMN - 1, lowerRow + 7 + 1, 127) > 0)) padState = LP_GHOST; // notes above current column
+    if (tracks[currentTrack]->getEventsInTickInterval(tickTemp, tickTemp + TICKS_PER_COLUMN - 1 , lowerRow + row) > 0) padState = tracks[currentTrack]->color;
       
     padStateArray[3 * row] = 0; // solid color
     padStateArray[3 * row + 1] = padId;
@@ -726,16 +786,24 @@ void LPsetColumnFromTrackData(uint8_t padColumn)
 
 void setLPsongMode()
 {
-  uint8_t padStateArray[6] = {0, CCsongMode, LP_GREEN, 0, CCpatternMode, LP_OFF};
-  LP1.setMultiplePadColorState(padStateArray, 6);
+  uint8_t padStateArray[9] = {0, CCsongMode, LP_PURPLE, 0, CCsceneMode, LP_OFF, 0, CCpatternMode, LP_OFF};
+  LP1.setMultiplePadColorState(padStateArray, 9);
   LPdisplayMode = LPMODE_SONG;
+  LP1.page = 0;
+}
+
+void setLPsceneMode()
+{
+  uint8_t padStateArray[9] = {0, CCsongMode, LP_OFF, 0, CCsceneMode, LP_BLUE, 0, CCpatternMode, LP_OFF};
+  LP1.setMultiplePadColorState(padStateArray, 9);
+  LPdisplayMode = LPMODE_SCENE;
   LP1.page = 0;
 }
 
 void setLPpatternMode()
 {
-  uint8_t padStateArray[6] = {0, CCsongMode, LP_OFF, 0, CCpatternMode, LP_GREEN};
-  LP1.setMultiplePadColorState(padStateArray, 6);
+  uint8_t padStateArray[9] = {0, CCsongMode, LP_OFF, 0, CCsceneMode, LP_OFF, 0, CCpatternMode, LP_GREEN};
+  LP1.setMultiplePadColorState(padStateArray, 9);
   LPdisplayMode = LPMODE_PATTERN;
   LP1.page = 0;
 }
@@ -783,12 +851,7 @@ int16_t getEncoderDirection(uint8_t encoderNr)
 uint8_t updateButton(uint8_t buttonNr)
 {
   bouncers[buttonNr].update();
-  if (bouncers[buttonNr].fallingEdge())
-  {
-    //Serial.print("Button ");
-    //Serial.println(buttonNr);
-    return 1;
-  }
+  if (bouncers[buttonNr].fallingEdge()) return 1;
   else return 0;
 }
 
@@ -839,10 +902,11 @@ void updateMcp()
       case 32:
         break;
       case 64:
-        currentPage = PAGE_TRACK;
+        currentPage = PAGE_TOOLS;
         break;
       case 128:
-        currentPage = PAGE_LISTDEVICES;
+        currentPage = PAGE_TRACK;
+        //currentPage = PAGE_LISTDEVICES;
         //mcp.writePort(MCP23017Port::A, 128);
         break;
         

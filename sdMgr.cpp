@@ -74,7 +74,6 @@ void saveFile(uint8_t fileNr)
   sprintf(fileName, "BM2K_DATAFILE_%03d", fileNr);
   SD.remove(fileName);
   File dataFile = SD.open(fileName, FILE_WRITE);
-  //FileInfo.dataSize = sizeof(pattern) * NR_TRACKS * NR_PATTERNS;
   FileInfo.dataSize = DATA_SIZE;
   dataFile.write((uint8_t *)&FileInfo, sizeof(FileInfo));
   for (uint8_t trackId = 0; trackId < NR_TRACKS; trackId++)

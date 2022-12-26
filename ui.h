@@ -62,6 +62,7 @@
 #define PAGE_FILE         4
 #define PAGE_LISTDEVICES  5
 #define PAGE_SCENE        6
+#define PAGE_TOOLS        7
 
 #define PATTERN_LENGTH          0
 #define PATTERN_SPEED           1
@@ -74,6 +75,11 @@
 #define PATTERN_NR              8
 #define SCENE_NR                9
 #define SCENE_COLOR             10
+#define TOOLS_SELECTION         11
+#define TOOLS_ACTION            12
+#define TOOLS_TRANSPOSE         13
+#define MIDI_CLOCK              14
+#define SONG_PLAYMODE           15
 
 #define NR_PARAMETERS 11
 #define MAX_CHILDREN 8
@@ -88,14 +94,12 @@
 #define DISPLAYMODE_SEQUENCER      0
 #define DISPLAYMODE_PATTERNSELECT  1
 
-#define LPMODE_SONG     0
+#define LPMODE_SCENE    0
 #define LPMODE_PATTERN  1
+#define LPMODE_SONG     2
 
 extern uint8_t LPdisplayMode;
-extern uint8_t currentTrack;
-extern uint8_t currentPattern;
-extern int16_t currentEvent;
-extern uint8_t currentScene;
+
 
 typedef float (* FPgetFloat)();
 typedef void (* FPsetFloat)(float);
@@ -104,17 +108,14 @@ typedef String (* FPgetString)(uint8_t);
 struct page
 {
   uint8_t pageType;
-  char name[8];
-  uint8_t pageBack;
+  char name[9];
   uint8_t nrChildren;
   uint8_t children[MAX_CHILDREN];
-  uint8_t widget;
 };
 
 struct parameters
 {
-  char name[8];
- //float value;
+  char name[9];
   float minValue;
   float maxValue;
   float multiplier;
@@ -133,7 +134,6 @@ void updateLaunchpadUI();
 
 bool updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCall);
 
-//void updateNavigationPage(const uint8_t * pageArray, uint8_t nrButtons, bool firstCall);
 void clearNavigationArea();
 void drawMenuButton(uint8_t index, String text, bool selected);
 
@@ -149,6 +149,8 @@ void displayDevicePage(bool firstCall);
 void displayFilePage(bool firstCall);
 void displayFileNr(uint8_t fileNr);
 void displayLoadSave();
+void displayEncoderButtonHint(uint8_t encoder, String hint, uint16_t color);
+void displayToolsPage(bool firstCall);
 
 void LPcopy_update(bool firstCall, bool forceVariableUpdate);
 void LPcopy_clearArea();
@@ -170,13 +172,15 @@ void LPscrollDown();
 void LPsetPageFromTrackData();
 void LPsetColumnFromTrackData(uint8_t padColumn);
 void setLPsongMode();
+void setLPsceneMode();
 void setLPpatternMode();
-void LPsetTrackButtonsSongMode(bool forceUpdate);
+void LPsetTrackButtonsSceneMode(bool forceUpdate);
+void LPsetSceneButtonsSceneMode(bool forceUpdate);
 void LPsetSceneButtonsSongMode(bool forceUpdate);
 void LPtoggleMute(uint8_t control);
-void LPsetPageFromArrangementData(bool forceUpdate);
-void LPsetTrackRowFromArrangementData(uint8_t trackId, bool forceUpdate);
-
+void LPsetPageFromSceneData(bool forceUpdate);
+void LPsetTrackRowFromSceneData(uint8_t trackId, bool forceUpdate);
+void LPsetPageFromSongData(bool forceUpdate);
 
 uint16_t lpColor2tftColor(uint8_t lpColor);
 

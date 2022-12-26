@@ -6,6 +6,7 @@
 
 #define MAX_FILES 128
 
+#define DATA_SIZE_OLD sizeof(pattern) * NR_TRACKS * NR_PATTERNS + sizeof(SequencerDataOld)
 #define DATA_SIZE sizeof(pattern) * NR_TRACKS * NR_PATTERNS + sizeof(SequencerData)
 
 struct fileInfo

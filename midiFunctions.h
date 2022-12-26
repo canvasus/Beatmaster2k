@@ -44,6 +44,8 @@ void sendMidiClock();
 void sendMidiStart();
 void sendMidiStop();
 
+void updateIndicator(uint8_t state);
+
 #define CC_MODWHEEL 1
 
 //MIDI CC from LaunchPad
@@ -63,10 +65,12 @@ void sendMidiStop();
 #define   CCscrollDown     92
 #define   CCpageDecrease   93
 #define   CCpageIncrease   94
-#define   CCsceneMode      95
-#define   CCsongMode       96
+#define   CCsongMode       95
+#define   CCsceneMode      96
 #define   CCpatternMode    97
 #define   CCeditMode       98
+
+#define   CCindicator      99
 
 // Pads for pattern mode
 #define   notePatternClear  11

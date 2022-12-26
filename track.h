@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Arduino.h"
 
 #define NO_EVENT            0
@@ -131,8 +132,7 @@ class Track {
     uint16_t      getEventsInTickNoteInterval(uint16_t tickStart, uint16_t tickEnd, uint8_t noteStart, uint8_t noteEnd);
     int16_t       getEventId(uint16_t tick, uint8_t note);
     uint8_t       getPatternStatus(uint8_t patternId);
-    
-
+  
     void          clearPattern(uint8_t patternId);
     void          clearTrack();
 
