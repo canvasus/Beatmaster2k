@@ -16,6 +16,7 @@
 #define SELECTION_PATTERN 0
 #define SELECTION_COLUMNS 1
 #define SELECTION_VIEW    2
+#define SELECTION_
 
 #define ACTION_CLEAR      0
 #define ACTION_COPY       1
@@ -124,6 +125,7 @@ void doToolAction();
 void copySelection();
 void pasteSelection();
 void clearSelection();
+void clearEventClipBoard();
 
 void updateSequencer();
 void updateSongMode();

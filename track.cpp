@@ -309,9 +309,12 @@ int16_t Track::getEventId(uint16_t tick, uint8_t note)
   uint8_t index = 0;
   while (index < _nrEvents)
   {
-    if (_patterns[_currentPattern].trackEvents[index].tick == tick && _patterns[_currentPattern].trackEvents[index].noteValue == note) return index;
+    if (  (_patterns[_currentPattern].trackEvents[index].tick == tick)
+    &&    (_patterns[_currentPattern].trackEvents[index].noteValue == note)
+    &&    (_patterns[_currentPattern].trackEvents[index].header != NO_EVENT) ) return index;
     index++;
   }
+  //printEventArray(16);
   return -1;
 }
 

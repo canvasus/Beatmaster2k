@@ -30,7 +30,7 @@ const parameters displayParameters[] = {
                                          {"OUTPUT",   0,        7,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
                                          {"BPM",      20,       300,       1,         0,    &getBpm, &setBpm, nullptr},
                                          {"CHANNEL",  0,        17,        1,         0,    &getTrackChannel, &setTrackChannel, &get0_16_note},
-                                         {"LENGTH",   0,        128,       1,         0,    &getEventLength, &setEventLength, nullptr},
+                                         {"LENGTH",   1,        128,       1,         0,    &getEventLength, &setEventLength, nullptr},
                                          {"REC.TRP",  0,        2,         1,         0,    &getTransposeStatus, &setTransposeStatus, &getNoYesSelectedEnum},
                                          {"NR",       0,        7,         1,         0,    &getTrackPatternNr, &setTrackPatternNr, nullptr},
                                          {"NR",       0,        15,        1,         0,    &getSceneNr, &setSceneNr, nullptr},

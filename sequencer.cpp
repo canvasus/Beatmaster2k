@@ -27,6 +27,9 @@ uint8_t currentPattern      = 0;
 int16_t currentEvent        = -1;
 uint8_t currentScene        = 0;
 
+TrackEvent eventClipBoard[NR_TRACK_EVENTS];
+Pattern patternClipBoard;
+
 IntervalTimer sequencerUpdateTimer;
 
 MIDIcallback outputNoteOnFunctions[] = {voiceNoteOn, serialMidiNoteOn, deviceNoteOn, midi1NoteOn, midi2NoteOn, midi3NoteOn, midi4NoteOn, midi5NoteOn};
@@ -295,14 +298,50 @@ void doToolAction()
   }
 }
 
+void clearEventClipBoard()
+{
+  for (uint8_t eventId = 0; eventId < NR_TRACK_EVENTS; eventId++) eventClipBoard[eventId] = empty_trackEvent;
+}
+
 void copySelection()
 {
-  
+  clearEventClipBoard();
+  if (selectionId == SELECTION_PATTERN) patternClipBoard = tracks[currentTrack]->getPattern(currentPattern);
+  else
+  {
+    uint8_t noteStart = tracks[currentTrack]->lowerRow;
+    uint8_t noteEnd = noteStart + 8;
+    uint8_t eventCounter = 0;
+    
+    if (selectionId == SELECTION_COLUMNS)
+    {
+      noteStart = 0;
+      noteEnd = 127;
+    } 
+    
+    for (uint8_t column = 0; column < 8; column++)
+    {
+      uint16_t tick = LP1.page * 8 * TICKS_PER_COLUMN + column * TICKS_PER_COLUMN;
+      for(uint8_t note = noteStart; note <= noteEnd; note++)
+      {
+        int16_t eventId = tracks[currentTrack]->getEventId(tick, note);
+        if (eventId > -1)
+        {
+          eventClipBoard[eventCounter] = tracks[currentTrack]->getEvent(currentPattern, eventId);
+          eventCounter++;
+        }
+      }
+    }
+      //Serial.printf("Copied %d events\n", eventCounter);
+   }  
 }
+  
 
 void pasteSelection()
 {
-  
+  if (selectionId == SELECTION_PATTERN) tracks[currentTrack]->setPattern(currentPattern, patternClipBoard);
+  LPsetPageFromTrackData();
+  LPcopy_update(false, true);
 }
 
 void clearSelection()
@@ -323,6 +362,8 @@ void clearSelection()
       for(uint8_t note = noteStart; note <= noteEnd; note++) tracks[currentTrack]->removeEvents(tickStart, tickEnd, note);
     }
   }
+  LPsetPageFromTrackData();
+  LPcopy_update(false, true);
 }
 
 void updateSequencer()
