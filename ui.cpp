@@ -36,7 +36,7 @@ const parameters displayParameters[] = {
                                          {"NR",       0,        15,        1,         0,    &getSceneNr, &setSceneNr, nullptr},
                                          {"COLOR",    0,        127,       1,         0,    &getSceneColor, &setSceneColor, nullptr},
 
-                                         {"SELECTN",  0,        2,         1,         0,    &getToolSelection, &setToolSelection, getSelectionEnum},
+                                         {"SELECTN",  0,        3,         1,         0,    &getToolSelection, &setToolSelection, getSelectionEnum},
                                          {"ACTION",   0,        2,         1,         0,    &getToolAction, &setToolAction, getActionEnum},
                                          {"TRANSP",   -24,      24,        1,         0,    &getToolTranspose, &setToolTranspose, nullptr},
                                          {"MIDI CLK", 0,        1,         1,         0,    &getMidiClockOnOff, &setMidiClockOnOff, &getNoYesSelectedEnum},
@@ -383,7 +383,14 @@ void displayToolsPage(bool firstCall)
 {
   updateParameterPage(pages[PAGE_TOOLS].children, pages[PAGE_TOOLS].nrChildren, firstCall, false);
   if (firstCall) displayEncoderButtonHint(0, "EXEC", TFT_RED);
-  if (updateButton(0)) doToolAction();
+  if (updateButton(0))
+  {
+    doToolAction();
+    LPcopy_update(false, true);
+    if (LPdisplayMode == LPMODE_PATTERN) LPsetPageFromTrackData();
+    if (LPdisplayMode == LPMODE_SONG) LPsetPageFromSongData(true);
+  }
+  
 }
 
 

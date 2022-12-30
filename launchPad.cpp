@@ -1,5 +1,4 @@
 #include "launchPad.h"
-#include "Arduino.h"
 
 LaunchPad::LaunchPad(uint8_t LP_id)
 {

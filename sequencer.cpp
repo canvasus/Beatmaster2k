@@ -38,8 +38,12 @@ String outputNames[] = {"Dummy", "Serial", "USB device", "USB 0", "USB 1", "USB 
 uint8_t nrOutputFunctions = sizeof(outputNoteOnFunctions)/sizeof(outputNoteOnFunctions[0]);
 const String noYesSelected[] = {"No", "Yes", "Selected"};
 
+elapsedMicros debugTimer;
+
+
 void initSequencer()
 {
+  sequencerUpdateTimer.priority(100); 
   for (uint8_t sceneId = 0;sceneId < NR_SCENES; sceneId++) SequencerData.sceneColors[sceneId] = LP_GREEN;
   for (uint8_t arrId = 0;arrId < NR_ARRPOSITIONS; arrId++) SequencerData.arrangement[arrId] = NO_SCENE;
   sequencerUpdateTimer.begin(tickTracks, oneTickUs); 
@@ -254,6 +258,9 @@ String getSelectionEnum(uint8_t selection)
     case SELECTION_VIEW:
       return "View";
       break;
+    case SELECTION_SONG:
+      return "Song";
+      break;
     default:
       return "ERR";
   }
@@ -307,7 +314,7 @@ void copySelection()
 {
   clearEventClipBoard();
   if (selectionId == SELECTION_PATTERN) patternClipBoard = tracks[currentTrack]->getPattern(currentPattern);
-  else
+  if (selectionId == SELECTION_COLUMNS || selectionId == SELECTION_VIEW)
   {
     uint8_t noteStart = tracks[currentTrack]->lowerRow;
     uint8_t noteEnd = noteStart + 8;
@@ -347,7 +354,13 @@ void pasteSelection()
 void clearSelection()
 {
   if (selectionId == SELECTION_PATTERN) tracks[currentTrack]->clearPattern(tracks[currentTrack]->getActivePatternId());
-  else
+  
+  if (selectionId == SELECTION_SONG)
+  {
+    for (uint8_t arrId = 0;arrId < NR_ARRPOSITIONS; arrId++) SequencerData.arrangement[arrId] = NO_SCENE;
+  }
+  
+  if (selectionId == SELECTION_COLUMNS || selectionId == SELECTION_VIEW)
   {
     uint16_t tickStart = (LP1.page * 8) * TICKS_PER_COLUMN;
     uint16_t tickEnd = tickStart + 8 * TICKS_PER_COLUMN - 1;
@@ -362,8 +375,7 @@ void clearSelection()
       for(uint8_t note = noteStart; note <= noteEnd; note++) tracks[currentTrack]->removeEvents(tickStart, tickEnd, note);
     }
   }
-  LPsetPageFromTrackData();
-  LPcopy_update(false, true);
+ 
 }
 
 void updateSequencer()

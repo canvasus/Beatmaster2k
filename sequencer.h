@@ -16,7 +16,7 @@
 #define SELECTION_PATTERN 0
 #define SELECTION_COLUMNS 1
 #define SELECTION_VIEW    2
-#define SELECTION_
+#define SELECTION_SONG    3
 
 #define ACTION_CLEAR      0
 #define ACTION_COPY       1
