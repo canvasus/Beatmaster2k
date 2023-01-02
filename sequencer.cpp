@@ -26,8 +26,15 @@ uint8_t currentTrack        = 0;
 uint8_t currentPattern      = 0;
 int16_t currentEvent        = -1;
 uint8_t currentScene        = 0;
+uint8_t currentArrPosition  = 0;
+uint8_t currentArrPositionLength = 0;
+
+uint8_t fourthCounter = 0;
+
+uint8_t sceneLengthColumns = 16; // TEMPORARY, MOVE TO SequencerData !!!
 
 TrackEvent eventClipBoard[NR_TRACK_EVENTS];
+uint8_t nrClipBoardEvents = 0;
 Pattern patternClipBoard;
 
 IntervalTimer sequencerUpdateTimer;
@@ -40,6 +47,7 @@ const String noYesSelected[] = {"No", "Yes", "Selected"};
 
 elapsedMicros debugTimer;
 
+// ---- SEQUENCER CONTROL ----
 
 void initSequencer()
 {
@@ -51,22 +59,28 @@ void initSequencer()
 
 void tickTracks()
 {
-  static uint8_t fourthCounter = 0;
+  //static uint8_t fourthCounter = 0;
   // 24 ppq
   if (sequencerState == STATE_RUNNING)
   {
-    //if (fourthCounter == 0) LP1.setPadColor(CCindicator, LP_CYAN);
-    //if (fourthCounter == 1) LP1.setPadColor(CCindicator, LP_OFF);
     for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->tickTrack();
-    //if (sendClock) sendMidiClock();
-    //fourthCounter++;
-    //if (fourthCounter > ( ticksPerBeat - 1 )) fourthCounter = 0;
+    if (sendClock) sendMidiClock();
+    fourthCounter++;
+    if (fourthCounter > ( ticksPerBeat - 1 )) fourthCounter = 0;
   }
   else fourthCounter = 0;
 }
 
 void startSequencer()
 {
+   LP1.setPadColor(CCstartStop, LP_GREEN);
+   if (playMode == PLAYMODE_CHAIN_FROM_START)
+   {
+    currentArrPosition = 0;
+    currentScene = SequencerData.arrangement[currentArrPosition];
+    setSceneNr(SequencerData.arrangement[currentArrPosition]);
+   }
+   LP1.setPadColor(CCindicator, LP_CYAN);
    if (sendClock) sendMidiStart();
    sequencerState = STATE_RUNNING;
 }
@@ -74,6 +88,7 @@ void startSequencer()
 void stopSequencer()
 {
   if (sendClock) sendMidiStop();
+  LP1.setPadColor(CCstartStop, LP_RED);
   LP1.setPadColor(CCindicator, LP_OFF);
   sequencerState = STATE_STOPPED;
   resetTracks();
@@ -94,6 +109,9 @@ void setPlaymode(float mode) { playMode = (uint8_t)mode; }
 
 void setMidiClockOnOff(float onOff) { sendClock = (bool)onOff; }
 float getMidiClockOnOff() { return sendClock; }
+
+
+// ---- TRACK CONFIGURATON ----
 
 void setTrackOutput(float value)
 {
@@ -144,22 +162,6 @@ void setTrackPatternNr(float patternNr)
   currentPattern = patternNr;
 }
 
-float getEventLength()
-{
-  TrackEvent tempEvent = tracks[currentTrack]->getEvent(currentPattern, currentEvent);
-  return (float)(tempEvent.noteLength);
-}
-
-void setEventLength(float length)
-{
-  if (currentEvent != -1)
-  {
-    TrackEvent tempEvent = tracks[currentTrack]->getEvent(currentPattern, currentEvent);
-    tempEvent.noteLength = (uint16_t)length;
-    tracks[currentTrack]->setEvent(currentPattern, currentEvent, tempEvent);
-  }
-}
-
 float getTransposeStatus() { return (float)tracks[currentTrack]->trackRespondToTranspose; }
 void setTransposeStatus(float status) { tracks[currentTrack]->trackRespondToTranspose = (uint8_t)status; }
 String getNoYesSelectedEnum(uint8_t value) { return noYesSelected[constrain(value, 0, 2)]; }
@@ -172,6 +174,9 @@ void setTranspose(int transpose)
     if (tracks[trackId]->trackRespondToTranspose == 2 && trackId == currentTrack ) tracks[trackId]->transpose = transpose;
   }
 }
+
+
+// ---- PATTERN CONFIGURATON ----
 
 void setPatternSpeed(float speed)
 {
@@ -209,6 +214,25 @@ void flushTracksPlayedBuffers()
   for (uint8_t trackId = 0;trackId < NR_TRACKS; trackId++) tracks[trackId]->flushPlayedBuffer();
 }
 
+float getEventLength()
+{
+  TrackEvent tempEvent = tracks[currentTrack]->getEvent(currentPattern, currentEvent);
+  return (float)(tempEvent.noteLength);
+}
+
+void setEventLength(float length)
+{
+  if (currentEvent != -1)
+  {
+    TrackEvent tempEvent = tracks[currentTrack]->getEvent(currentPattern, currentEvent);
+    tempEvent.noteLength = (uint16_t)length;
+    tracks[currentTrack]->setEvent(currentPattern, currentEvent, tempEvent);
+  }
+}
+
+
+// --- SCENE CONFIGURATION ---
+
 void updateSceneConfiguration(uint8_t sceneId)
 {
   // update pattern configuration in selected scene
@@ -221,11 +245,16 @@ void updateSceneConfiguration(uint8_t sceneId)
 void setScene(uint8_t sceneId)
 {
   // set or cue patterns from scene
+  uint8_t sceneLength = 0;
   for (uint8_t trackId = 0; trackId < NR_TRACKS; trackId++)
   {
     if ( (sequencerState == STATE_STOPPED) && ( tracks[trackId]->getActivePatternId() != SequencerData.scenes[trackId][sceneId]) ) tracks[trackId]->setPatternId(SequencerData.scenes[trackId][sceneId]);
     if (sequencerState == STATE_RUNNING && ( tracks[trackId]->getActivePatternId() != SequencerData.scenes[trackId][sceneId]) ) tracks[trackId]->cuePatternId(SequencerData.scenes[trackId][sceneId]);
+    //uint8_t patternLength = tracks[trackId]->getPatternLengthColumns_indexed(SequencerData.scenes[trackId][sceneId], TICKS_PER_COLUMN);
+    //sceneLength =  max(sceneLength, patternLength);
   }
+  //currentArrPositionLength = sceneLength;
+  //Serial.printf("Current scene length: %d\n", sceneLength);
 }
 
 float getSceneNr() { return (float)currentScene; }
@@ -242,6 +271,9 @@ void setSceneColor(float color)
   SequencerData.sceneColors[currentScene] = (uint8_t)color;
   LPsetSceneButtonsSceneMode(true);
 }
+
+
+// --- CLIPBOARD TOOLS ---
 
 void setToolSelection(float selection) { selectionId = (uint8_t)selection; }
 float getToolSelection() { return (float)selectionId; }
@@ -308,12 +340,23 @@ void doToolAction()
 void clearEventClipBoard()
 {
   for (uint8_t eventId = 0; eventId < NR_TRACK_EVENTS; eventId++) eventClipBoard[eventId] = empty_trackEvent;
+  nrClipBoardEvents = 0;
+}
+
+void normalizeEventClipBoard()
+{
+  for(uint8_t clipBoardEventId = 0; clipBoardEventId < nrClipBoardEvents; clipBoardEventId++)
+  {
+    eventClipBoard[clipBoardEventId].tick = eventClipBoard[clipBoardEventId].tick % (8 * TICKS_PER_COLUMN);
+  }
 }
 
 void copySelection()
 {
   clearEventClipBoard();
+  
   if (selectionId == SELECTION_PATTERN) patternClipBoard = tracks[currentTrack]->getPattern(currentPattern);
+  
   if (selectionId == SELECTION_COLUMNS || selectionId == SELECTION_VIEW)
   {
     uint8_t noteStart = tracks[currentTrack]->lowerRow;
@@ -339,7 +382,8 @@ void copySelection()
         }
       }
     }
-      //Serial.printf("Copied %d events\n", eventCounter);
+    nrClipBoardEvents = eventCounter;
+    normalizeEventClipBoard();
    }  
 }
   
@@ -347,6 +391,20 @@ void copySelection()
 void pasteSelection()
 {
   if (selectionId == SELECTION_PATTERN) tracks[currentTrack]->setPattern(currentPattern, patternClipBoard);
+
+  if (selectionId == SELECTION_COLUMNS || selectionId == SELECTION_VIEW)
+  {
+    uint16_t destinationPageTickStart = LP1.page * 8 * TICKS_PER_COLUMN;
+    for(uint8_t clipBoardEventId = 0; clipBoardEventId < nrClipBoardEvents; clipBoardEventId++)
+    {
+      tracks[currentTrack]->addEvent(eventClipBoard[clipBoardEventId].tick + destinationPageTickStart, 
+                                      eventClipBoard[clipBoardEventId].noteValue + toolTranspose, 
+                                      eventClipBoard[clipBoardEventId].noteVelocity, 
+                                      eventClipBoard[clipBoardEventId].noteLength, 
+                                      false);
+    }
+  }
+  
   LPsetPageFromTrackData();
   LPcopy_update(false, true);
 }
@@ -375,29 +433,46 @@ void clearSelection()
       for(uint8_t note = noteStart; note <= noteEnd; note++) tracks[currentTrack]->removeEvents(tickStart, tickEnd, note);
     }
   }
- 
 }
+
+// --- SONG MODE, SCENE CHAINING ---
 
 void updateSequencer()
 {
-  if ( (sequencerState == STATE_RUNNING) && (playMode == PLAYMODE_CHAIN) ) updateSongMode();
+  if ( (sequencerState == STATE_RUNNING) && ( (playMode == PLAYMODE_CHAIN_FROM_SELECTION) || (playMode == PLAYMODE_CHAIN_FROM_START) ) ) updateSongMode();
 }
 
 void updateSongMode()
 {
-  // make sure all tracks are playing current scene
+  // TBD: this does not handle repetitions of same scene
+  
+  // make sure all tracks are playing current scene config
   // then cue next scene once
 
   bool allTracksInCurrentScene = true;
-  uint8_t sceneId = SequencerData.arrangement[currentScene];
+  uint8_t sceneId = SequencerData.arrangement[currentArrPosition];
+  static uint8_t sceneAgeColumns = 0;
   
   for (uint8_t trackId = 0; trackId < NR_TRACKS; trackId++)
   {
     if (tracks[trackId]->getActivePatternId() != SequencerData.scenes[trackId][sceneId]) allTracksInCurrentScene = false;
   }
   
-  if ( allTracksInCurrentScene && (SequencerData.arrangement[currentScene + 1] != NO_SCENE) )
+  if ( allTracksInCurrentScene && (SequencerData.arrangement[currentArrPosition + 1] != NO_SCENE))
   {
-    setSceneNr(currentScene + 1); //cues next scene
+    setSceneNr(SequencerData.arrangement[currentArrPosition + 1]);
+    //Serial.printf("Setting scene: %d\n", SequencerData.arrangement[currentArrPosition + 1]);
+    currentArrPosition++;
+  }
+}
+
+String getSongModeEnum(uint8_t modeId)
+{
+  switch (modeId)
+  {
+    case PLAYMODE_NONE: return F("Off");
+    case PLAYMODE_CHAIN_FROM_SELECTION: return F("From Selection");
+    case PLAYMODE_CHAIN_FROM_START: return F("From Start");
+    default: return F("ERR");
   }
 }

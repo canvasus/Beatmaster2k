@@ -19,31 +19,35 @@ void LaunchPad::setProgrammerMode()
 {
   uint8_t sysexData[] = {0, 32, 41, 2, 13, 0, 127};
   _midiDevice->sendSysEx(7, sysexData, false);
-  _midiDevice->send_now();
+  //_midiDevice->send_now();
 }
 
 void LaunchPad::setColumnColor(uint8_t column, uint8_t color)
 {
   uint8_t sysexData[] = {0, 32, 41, 2, 13, 3, 0, (uint8_t)(11 + column), color, 0, (uint8_t)(21 + column), color, 0, (uint8_t)(31 + column), color, 0, (uint8_t)(41 + column), color, 0, (uint8_t)(51 + column), color, 0, (uint8_t)(61 + column), color, 0, (uint8_t)(71 + column), color, 0, (uint8_t)(81 + column), color};
   _midiDevice->sendSysEx(sizeof(sysexData), sysexData, false);
+  _midiDevice->send_now();
 }
 
 void LaunchPad::setRowColor(uint8_t row, uint8_t color)
 {
   uint8_t sysexData[] = {0, 32, 41, 2, 13, 3, 0, (uint8_t)(11 + row * 10), color, 0, (uint8_t)(11 + row * 10 + 1), color, 0, (uint8_t)(11 + row * 10 + 2), color, 0, (uint8_t)(11 + row * 10 + 3), color, 0, (uint8_t)(11 + row * 10 + 4), color, 0, (uint8_t)(11 + row * 10 + 5), color, 0, (uint8_t)(11 + row * 10 + 6), color, 0, (uint8_t)(11 + row * 10 + 7), color};
   _midiDevice->sendSysEx(sizeof(sysexData), sysexData, false);
+  _midiDevice->send_now();
 }
 
 void LaunchPad::setPadColor(uint8_t padId, uint8_t color)
 {
   uint8_t sysexData[] = {0, 32, 41, 2, 13, 3, 0, padId, color};
   _midiDevice->sendSysEx(9, sysexData, false);
+  _midiDevice->send_now();
 }
 
 void LaunchPad::setPadColorRGB(uint8_t padId, uint8_t R, uint8_t G, uint8_t B)
 {
   uint8_t sysexData[] = {0, 32, 41, 2, 13, 3, 3, padId, R, G, B};
   _midiDevice->sendSysEx(11, sysexData, false);
+  _midiDevice->send_now();
 }
 
 void LaunchPad::setMultiplePadColorState(uint8_t padStateArray[], uint8_t arrayLength)
@@ -53,6 +57,7 @@ void LaunchPad::setMultiplePadColorState(uint8_t padStateArray[], uint8_t arrayL
   memcpy(sysexData, sysexHeader, 6);
   memcpy(&sysexData[6], padStateArray, arrayLength);
   _midiDevice->sendSysEx(arrayLength + 6, sysexData, false);
+  _midiDevice->send_now();
 }
 
 void LaunchPad::setPadColorFlashing(uint8_t padId, uint8_t color)
@@ -60,6 +65,7 @@ void LaunchPad::setPadColorFlashing(uint8_t padId, uint8_t color)
   // uint8_t sysexData[] = {0, 32, 41, 2, 13, 3, 2, padId, color};  // pulsing
   uint8_t sysexData[] = {0, 32, 41, 2, 13, 3, 1, padId, color, LP_OFF};  // flashing
   _midiDevice->sendSysEx(10, sysexData, false);
+  _midiDevice->send_now();
 }
 
 void LaunchPad::resetPage()

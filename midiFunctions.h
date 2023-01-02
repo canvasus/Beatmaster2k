@@ -38,13 +38,16 @@ void LPNoteOn(uint8_t channel, uint8_t note, uint8_t velocity);
 void LPNoteOff(uint8_t channel, uint8_t note, uint8_t velocity);
 void LPControlChange(byte channel, byte control, byte value);
 
+//void setLaunchPadKeyboardMode(bool keyboardActive);
+//char LPkeyboardPoll();
+
 void transposeMidiIn(uint8_t channel, uint8_t note, uint8_t velocity);
 
 void sendMidiClock();
 void sendMidiStart();
 void sendMidiStop();
 
-void updateIndicator(uint8_t state);
+//void updateIndicator(uint8_t state);
 
 #define CC_MODWHEEL 1
 

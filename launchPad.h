@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Arduino.h"
-//#include <USBHost_t36.h>
 #include <MIDI.h>
+#include <USBHost_t36.h>
 
 #define LP_RED    5
 #define LP_BLUE   41

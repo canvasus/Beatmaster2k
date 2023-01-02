@@ -15,7 +15,7 @@ struct fileInfo
   char name[11] = {'I', 'N', 'I', 'T', ' ', 'P', 'A', 'T', 'C', 'H'};
 };
 
-extern fileInfo PatchInfo;
+extern fileInfo FileInfo;
 
 void initSDcard();
 uint8_t peekFileName(uint8_t fileNr, char * buf);

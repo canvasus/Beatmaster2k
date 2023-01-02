@@ -1,8 +1,6 @@
 #include "sdMgr.h"
 
 const int chipSelect = BUILTIN_SDCARD;
-
-
  
 const char NAstring[11] = {'N', '/', 'A', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
 fileInfo FileInfo;
@@ -16,22 +14,17 @@ uint8_t peekFileName(uint8_t fileNr, char * buf)
 {
   char fileName[18];
   sprintf(fileName, "BM2K_DATAFILE_%03d", fileNr);
-  Serial.println(fileName);
   if (SD.exists(fileName))
   {
     File dataFile = SD.open(fileName, FILE_READ);
     dataFile.read((uint8_t *)&FileInfo, sizeof(FileInfo));
     dataFile.close();
-    Serial.print("Patch nr: ");
-    Serial.print(fileNr);
-    Serial.print(" contains name: ");
-    Serial.println(FileInfo.name);
     memcpy(buf, FileInfo.name, 11);
     return 1;
   }
   else
   {
-    Serial.printf("Patch nr %d not found on SD", fileNr);
+    //Serial.printf(F("Patch nr %d not found on SD\n"), fileNr);
     memcpy(buf, NAstring, 11);
     return 0;
   }
@@ -39,8 +32,8 @@ uint8_t peekFileName(uint8_t fileNr, char * buf)
 
 void loadFile(uint8_t fileNr)
 {
-  Serial.print("Loading patch nr: ");
-  Serial.println(fileNr);
+  //Serial.print(F("Loading patch nr: "));
+  //Serial.println(fileNr);
   char fileName[18];
   sprintf(fileName, "BM2K_DATAFILE_%03d", fileNr);
   if (SD.exists(fileName))
@@ -68,8 +61,8 @@ void loadFile(uint8_t fileNr)
 
 void saveFile(uint8_t fileNr)
 {
-  Serial.print("Storing patch nr: ");
-  Serial.println(fileNr);
+  //Serial.print("Storing patch nr: ");
+  //Serial.println(fileNr);
   char fileName[18];
   sprintf(fileName, "BM2K_DATAFILE_%03d", fileNr);
   SD.remove(fileName);

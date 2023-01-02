@@ -7,8 +7,9 @@
 #define STATE_STOPPED 0
 #define STATE_RUNNING 1
 
-#define PLAYMODE_NONE   0
-#define PLAYMODE_CHAIN  1
+#define PLAYMODE_NONE                  0
+#define PLAYMODE_CHAIN_FROM_SELECTION  1
+#define PLAYMODE_CHAIN_FROM_START      2
 
 #define MODE_PATTERNEDIT 0
 #define MODE_EVENTEDIT  1
@@ -34,7 +35,6 @@
 #define TICKS_PER_BEAT    24
 #define TICKS_PER_COLUMN  6
 
-
 struct sequencerData
 {
   uint8_t bpm = 120;
@@ -53,6 +53,8 @@ extern uint8_t currentTrack;
 extern uint8_t currentPattern;
 extern int16_t currentEvent;
 extern uint8_t currentScene;
+extern uint8_t currentArrPosition;
+extern uint8_t fourthCounter;
 
 void initSequencer();
 void tickTracks();
@@ -109,6 +111,8 @@ float getSceneNr();
 void setSceneNr(float sceneId);
 float getSceneColor();
 void setSceneColor(float color);
+float getSceneLength();
+void setSceneLength(float length);
 
 void setToolSelection(float selection);
 float getToolSelection();
@@ -126,6 +130,8 @@ void copySelection();
 void pasteSelection();
 void clearSelection();
 void clearEventClipBoard();
+void normalizeEventClipBoard();
 
 void updateSequencer();
 void updateSongMode();
+String getSongModeEnum(uint8_t modeId);

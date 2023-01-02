@@ -119,6 +119,7 @@ class Track {
     void          setPatternLengthBeats(uint16_t lengthBeats);
     uint16_t      getPatternLengthBeats();
     uint16_t      getPatternLengthColumns(uint16_t ticksPerColumn);
+    uint16_t      getPatternLengthColumns_indexed(uint8_t patternId, uint16_t ticksPerColumn);
     void          setPatternLengthColumns(uint16_t length, uint16_t ticksPerColumn);
     uint16_t      getTrackDefaultNoteLengthTicks();
     void          setTrackDefaultNoteLengthTicks(uint16_t noteLength);

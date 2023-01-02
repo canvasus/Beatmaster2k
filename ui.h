@@ -63,6 +63,7 @@
 #define PAGE_LISTDEVICES  5
 #define PAGE_SCENE        6
 #define PAGE_TOOLS        7
+#define PAGE_SAVE         8
 
 #define PATTERN_LENGTH          0
 #define PATTERN_SPEED           1
@@ -97,9 +98,10 @@
 #define LPMODE_SCENE    0
 #define LPMODE_PATTERN  1
 #define LPMODE_SONG     2
+#define LPMODE_KEYBOARD 3
 
 extern uint8_t LPdisplayMode;
-
+extern uint8_t currentFileNr;
 
 typedef float (* FPgetFloat)();
 typedef void (* FPsetFloat)(float);
@@ -148,9 +150,16 @@ void handleSpecialPages(bool firstCall);
 void displayDevicePage(bool firstCall);
 void displayFilePage(bool firstCall);
 void displayFileNr(uint8_t fileNr);
+void displayFileName(uint8_t fileNr);
+void displayFileName_strEdit(char * name,  uint8_t markedIndex);
 void displayLoadSave();
+void displaySavePage(bool firstCall);
+
 void displayEncoderButtonHint(uint8_t encoder, String hint, uint16_t color);
 void displayToolsPage(bool firstCall);
+
+//uint8_t keyboardRequest(char * buf);
+//void displayKeyboardInputWindow();
 
 void LPcopy_update(bool firstCall, bool forceVariableUpdate);
 void LPcopy_clearArea();
@@ -177,11 +186,13 @@ void setLPpatternMode();
 void LPsetTrackButtonsSceneMode(bool forceUpdate);
 void LPsetSceneButtonsSceneMode(bool forceUpdate);
 void LPsetSceneButtonsSongMode(bool forceUpdate);
+void LPsetArrEventStatus(uint8_t arrId, bool current);
 void LPtoggleMute(uint8_t control);
 void LPsetPageFromSceneData(bool forceUpdate);
 void LPsetTrackRowFromSceneData(uint8_t trackId, bool forceUpdate);
 void LPsetPageFromSongData(bool forceUpdate);
 
+void setLPkeyboardView();
 uint16_t lpColor2tftColor(uint8_t lpColor);
 
 int16_t getEncoderDirection(uint8_t encoderNr);

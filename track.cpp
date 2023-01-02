@@ -105,6 +105,7 @@ void Track::loopResetTrack()
 {
   _cuedEventIndex = 0;
   _currentTrackTick = 0;
+  _prescalerCounter = 0;
   // check if a pattern change is cued here?
   if (_cuedPattern != 255)
   {
@@ -213,6 +214,7 @@ uint16_t Track::getPatternLengthBeats() { return ( (_patterns[_currentPattern].p
 
 uint16_t Track::getPatternLengthColumns(uint16_t ticksPerColumn) {return ( (_patterns[_currentPattern].patternLengthTicks + 1) / RESOLUTION16TH); }
 void     Track::setPatternLengthColumns(uint16_t length, uint16_t ticksPerColumn) { _patterns[_currentPattern].patternLengthTicks = length * RESOLUTION16TH - 1; }
+uint16_t Track::getPatternLengthColumns_indexed(uint8_t patternId, uint16_t ticksPerColumn) {return ( (_patterns[patternId].patternLengthTicks + 1) / RESOLUTION16TH); }
 
 void     Track::setPatternSpeed(uint8_t patternId, uint8_t speed) { _patterns[patternId].patternSpeed = speed; }
 uint8_t  Track::getPatternSpeed(uint8_t patternId) { return _patterns[_currentPattern].patternSpeed; }

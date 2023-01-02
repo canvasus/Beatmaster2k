@@ -13,6 +13,7 @@ LaunchPad LP1 = LaunchPad(1);
 MIDIDevice_BigBuffer * midiDrivers[5] = {&midi1, &midi2, &midi3, &midi4, &midi5};
 const char * driver_names[5] = {"midi1", "midi2", "midi3", "midi4", "midi5"};
 #define CNT_DEVICES (sizeof(midiDrivers)/sizeof(midiDrivers[0])) 
+uint8_t launchPadMidiIndex = 0;
 
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
@@ -84,8 +85,45 @@ void configureLaunchPad(uint8_t driverIndex)
   midiDrivers[driverIndex]->setHandleControlChange(LPControlChange);
   Serial.print(F("Initializing LP @ port: "));
   Serial.println(driver_names[driverIndex]);
+  launchPadMidiIndex = driverIndex;
   LP1.setProgrammerMode();
 }
+
+//void setLaunchPadKeyboardMode(bool keyboardActive)
+//{
+//  if (keyboardActive)
+//  {
+//    midiDrivers[launchPadMidiIndex]->setHandleNoteOn(nullptr);
+//    midiDrivers[launchPadMidiIndex]->setHandleNoteOff(nullptr);
+//    midiDrivers[launchPadMidiIndex]->setHandleControlChange(nullptr);
+//  }
+//  else
+//  {
+//    midiDrivers[launchPadMidiIndex]->setHandleNoteOn(LPNoteOn);
+//    midiDrivers[launchPadMidiIndex]->setHandleNoteOff(LPNoteOff);
+//    midiDrivers[launchPadMidiIndex]->setHandleControlChange(LPControlChange);
+//  }
+//}
+
+//char LPkeyboardPoll()
+//{
+//  char character = 0;
+//  uint8_t index = 0;
+//  if (midiDrivers[launchPadMidiIndex]->read() && (midiDrivers[launchPadMidiIndex]->getType() == 144) )
+//  {
+//    uint8_t data1 = midiDrivers[launchPadMidiIndex]->getData1();
+//    uint8_t row = LPnoteToPadRow(data1);
+//    uint8_t column = LPnoteToPadColumn(data1);
+//    index = 56 - row * 8  + column;
+//    
+//    if (index < 26) character = index + 65;
+//    if (index >= 26 && index <= 34) character = index + 22;
+//    //Serial.printf("Index: %d, Char: %d\n", index, character);
+//  }
+//  
+//  //Serial.printf("Type: %d, data1: %d, data2: %d\n", type, data1, data2);
+//  return character;
+//}
 
 void configureMidiInputDevices(uint8_t LP_index)
 {
@@ -157,6 +195,7 @@ void sendMidiClock()
   for (uint8_t index = 0; index < CNT_DEVICES; index++)
   {
     if (*midiDrivers[index]) midiDrivers[index]->sendRealTime(usbMIDI.Clock);
+    midiDrivers[index]->send_now();
   }
 }
 
@@ -166,6 +205,7 @@ void sendMidiStart()
   for (uint8_t index = 0; index < CNT_DEVICES; index++)
   {
     if (*midiDrivers[index]) midiDrivers[index]->sendRealTime(usbMIDI.Start);
+    midiDrivers[index]->send_now();
   }
 }
 
@@ -215,7 +255,7 @@ void LPNoteOn(byte channel, byte note, byte velocity)
   {
     // add / remove patterns
     bool inPatternRange =  (velocity > 0 && note >= 21 && note <= 88); // in pattern range
-    if (inPatternRange) //(velocity > 0 && note >= 21 && note <= 68) 
+    if (inPatternRange)
     {
       uint8_t padColumn = LPnoteToPadColumn(note);
       uint8_t padRow = LPnoteToPadRow(note);
@@ -244,8 +284,12 @@ void LPNoteOn(byte channel, byte note, byte velocity)
       uint8_t row = LPnoteToPadRow(note);
       uint8_t column = LPnoteToPadColumn(note);
       arrIndex = 56 - row * 8  + column;
-      Serial.printf("R: %d, C: %d, Arr: %d \n", row, column, arrIndex);
-      SequencerData.arrangement[arrIndex] = currentArrScene;
+      if (sequencerEditMode != MODE_EVENTEDIT) SequencerData.arrangement[arrIndex] = currentArrScene;
+      else
+      {
+        currentArrPosition = arrIndex;
+        setSceneNr(SequencerData.arrangement[currentArrPosition]);        
+      }
     }
 
     bool inSceneRange =  (velocity > 0 && note >= 11 && note <= 18); // in scene range
@@ -263,9 +307,10 @@ void LPNoteOff(byte channel, byte note, byte velocity)
 
 void LPControlChange(byte channel, byte control, byte value)
 {
-  //Serial.printf("LP CC: %d, %d\n", control, value);
+  
   if (value > 0)
   {
+    //Serial.printf("LP CC: %d, %d\n", control, value);
     uint8_t trackTemp = (control - 9) / 10 - 2;
     switch (control)
     {
@@ -276,7 +321,7 @@ void LPControlChange(byte channel, byte control, byte value)
       case CCtrack5:
       case CCtrack6:
       case CCtrack7:
-        if (LPdisplayMode == LPMODE_SCENE) LPtoggleMute(trackTemp);
+        if (LPdisplayMode == LPMODE_SCENE || LPdisplayMode == LPMODE_SONG) LPtoggleMute(trackTemp);
         else setCurrentTrack(trackTemp);
         break;
       case CCstartStop:
@@ -284,12 +329,12 @@ void LPControlChange(byte channel, byte control, byte value)
         if (sequencerState == STATE_STOPPED)
         {
           startSequencer();
-          LP1.setPadColor(CCstartStop, LP_GREEN);
+          //LP1.setPadColor(CCstartStop, LP_GREEN);
         }
         else
         {
           stopSequencer();
-          LP1.setPadColor(CCstartStop, LP_RED);
+          //LP1.setPadColor(CCstartStop, LP_RED);
         }
         break;
       case CCscrollUp:
@@ -352,14 +397,14 @@ void LPControlChange(byte channel, byte control, byte value)
   }
 }
 
-void updateIndicator(uint8_t state)
-{
-  static bool lastIndicatorState = false;
-  bool indicatorState = state && !lastIndicatorState;
-  if (lastIndicatorState != indicatorState)
-  {
-    lastIndicatorState = indicatorState;
-    if (indicatorState) LP1.setPadColor(CCindicator, LP_CYAN);
-    else LP1.setPadColor(CCindicator, LP_OFF);
-  }
-}
+//void updateIndicator(uint8_t state)
+//{
+//  static bool lastIndicatorState = false;
+//  bool indicatorState = state && !lastIndicatorState;
+//  if (lastIndicatorState != indicatorState)
+//  {
+//    lastIndicatorState = indicatorState;
+//    if (indicatorState) LP1.setPadColor(CCindicator, LP_CYAN);
+//    else LP1.setPadColor(CCindicator, LP_OFF);
+//  }
+//}

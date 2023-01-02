@@ -5,9 +5,9 @@ Encoder encoders[2] = {Encoder(ROT1_A, ROT1_B), Encoder(ROT2_A, ROT2_B)};
 Bounce bouncers[2] = {Bounce(ROT1_SW, 5), Bounce(ROT2_SW, 5)}; 
 MCP23017 mcp = MCP23017(MCP23017_ADDR, Wire1);
 
-
-uint8_t currentPage = PAGE_SONG;
+uint8_t currentPage = PAGE_FILE;
 uint8_t LPdisplayMode = LPMODE_PATTERN;
+uint8_t currentFileNr = 0;
 
 //                      .pageType    .name       .nrChildren  .children
 const page pages[] = {
@@ -18,8 +18,8 @@ const page pages[] = {
                       {PAGE_FILE,     "FILE",     0,          {}},
                       {PAGE_LISTDEVICES,  "USBDEV",    1,     {}},
                       {PAGE_PAR,      "SCENE",    2,          {SCENE_NR, SCENE_COLOR}},
-                      {PAGE_TOOLS,    "TOOLS",    3,          {TOOLS_SELECTION, TOOLS_ACTION, TOOLS_TRANSPOSE}}
-               
+                      {PAGE_TOOLS,    "TOOLS",    3,          {TOOLS_SELECTION, TOOLS_ACTION, TOOLS_TRANSPOSE}},
+                      {PAGE_SAVE,     "SAVE",     0,          {}}
 };
 
 //                                        name        .minValue .maxValue .multiplier .displayPrecision  .getFunction .setFunction  .enumFunction                                          
@@ -40,7 +40,7 @@ const parameters displayParameters[] = {
                                          {"ACTION",   0,        2,         1,         0,    &getToolAction, &setToolAction, getActionEnum},
                                          {"TRANSP",   -24,      24,        1,         0,    &getToolTranspose, &setToolTranspose, nullptr},
                                          {"MIDI CLK", 0,        1,         1,         0,    &getMidiClockOnOff, &setMidiClockOnOff, &getNoYesSelectedEnum},
-                                         {"CHAIN",    0,        1,         1,         0,    &getPlaymode, &setPlaymode, &getNoYesSelectedEnum}
+                                         {"CHAIN",    0,        2,         1,         0,    &getPlaymode, &setPlaymode, &getSongModeEnum}
                                         };
 
                                         
@@ -295,6 +295,9 @@ void handleSpecialPages(bool firstCall)
     case PAGE_TOOLS:
       displayToolsPage(firstCall);
       break;
+    case PAGE_SAVE:
+      displaySavePage(firstCall);
+      break;
   }
 }
 
@@ -318,24 +321,26 @@ void displayDevicePage(bool firstCall)
 
 void displayFilePage(bool firstCall)
 {
-  static uint8_t fileNr = 0;
+
   if (firstCall)
   {
     tft.fillRect(0, PAGEINDICATOR_HEIGHT, SCREEN_XRES - HEADER_WIDTH - 1, 160 , MAIN_BG_COLOR);
-    displayFileNr(fileNr);
+    displayFileNr(currentFileNr);
+    displayFileName(currentFileNr);
     displayLoadSave();
   }
-  int newFileNr = fileNr + getEncoderDirection(0);
+  int newFileNr = currentFileNr + getEncoderDirection(0);
   if (newFileNr > MAX_FILES - 1) newFileNr = 0;
   if (newFileNr < 0) newFileNr = MAX_FILES - 1;
-  if ((uint8_t)newFileNr != fileNr)
+  if ((uint8_t)newFileNr != currentFileNr)
   {
-    fileNr = (uint8_t)newFileNr;
-    displayFileNr(fileNr);
+    currentFileNr = (uint8_t)newFileNr;
+    displayFileNr(currentFileNr);
+    displayFileName(currentFileNr);
   }
   if (updateButton(0))
   {
-    loadFile(fileNr);
+    loadFile(currentFileNr);
     if (LPdisplayMode == LPMODE_PATTERN) LPsetPageFromTrackData();
     if (LPdisplayMode == LPMODE_SCENE)
     {
@@ -346,7 +351,8 @@ void displayFilePage(bool firstCall)
     LPcopy_update(true, true);
     setBpm(SequencerData.bpm);
   }
-  if (updateButton(1)) saveFile(fileNr);
+  
+  if (updateButton(1)) currentPage = PAGE_SAVE;
 }
 
 void displayFileNr(uint8_t fileNr)
@@ -357,6 +363,38 @@ void displayFileNr(uint8_t fileNr)
    tft.setTextColor(ILI9341_WHITE);
    tft.printf("ID: %02d", fileNr);
    tft.setFont(Arial_12);
+}
+
+void displayFileName(uint8_t fileNr)
+{
+  char buf[11];
+  peekFileName(fileNr, buf);
+  tft.fillRect(10, PAGEINDICATOR_HEIGHT + 60 - 2, 150, 20 , MAIN_BG_COLOR);
+  tft.setCursor(10, PAGEINDICATOR_HEIGHT + 60);
+  tft.setFont(Arial_14);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.print(buf);
+  tft.setFont(Arial_12);
+}
+
+void displayFileName_strEdit(char * name, uint8_t markedIndex)
+{
+  const uint8_t charOffset = 16;
+  const uint8_t charStart = 10;
+  const uint8_t charYpos = PAGEINDICATOR_HEIGHT + 60;
+  
+  tft.fillRect(charStart, PAGEINDICATOR_HEIGHT + 60 - 2, charStart + 10 * charOffset, 20 , MAIN_BG_COLOR);
+  tft.setFont(Arial_14);
+  for (uint8_t charIndex = 0; charIndex < 10; charIndex++)
+  {
+    if (charIndex == markedIndex) tft.fillRect(charStart + charIndex * charOffset, charYpos - 2, 12, 18, ILI9341_RED);
+    else tft.fillRect(charStart + charIndex * charOffset, charYpos - 2, 12, 18, ILI9341_DARKCYAN);
+    tft.setCursor(charStart + charIndex * charOffset, charYpos);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.print(name[charIndex]);
+  }
+  tft.setFont(Arial_12);
+  tft.setTextColor(ILI9341_WHITE);
 }
 
 void displayLoadSave()
@@ -377,6 +415,46 @@ void displayEncoderButtonHint(uint8_t encoder, String hint, uint16_t color)
   tft.setCursor(x - radius + 5, y - 5);
   tft.print(hint);
   tft.setTextColor(ILI9341_WHITE);
+}
+
+void displaySavePage(bool firstCall)
+{
+  static uint8_t currentCharPos = 0;
+  
+  if (firstCall)
+  {
+    tft.fillRect(0, PAGEINDICATOR_HEIGHT, SCREEN_XRES - HEADER_WIDTH - 1, 160 , MAIN_BG_COLOR);
+    tft.setCursor(10, PAGEINDICATOR_HEIGHT + 30);
+    tft.setFont(Arial_12);
+    tft.setTextColor(ILI9341_WHITE);
+    tft.print(F("File name?"));
+    displayFileName_strEdit(FileInfo.name, currentCharPos);
+    displayEncoderButtonHint(0, "CANC", TFT_GREEN);
+    displayEncoderButtonHint(1, "EXEC", TFT_RED);
+  }
+  
+  int newCharPos = currentCharPos + getEncoderDirection(0);
+  newCharPos = (uint8_t)constrain(newCharPos, 0, 9);
+  if (newCharPos != currentCharPos)
+  {
+    currentCharPos = newCharPos;
+    displayFileName_strEdit(FileInfo.name, currentCharPos);
+  }
+
+  uint8_t newChar = FileInfo.name[currentCharPos] + getEncoderDirection(1);
+  newChar = constrain(newChar, 32, 90);
+  if (newChar != FileInfo.name[currentCharPos])
+  {
+    FileInfo.name[currentCharPos] = newChar;
+    displayFileName_strEdit(FileInfo.name, currentCharPos);
+  }
+  
+  if (updateButton(0)) currentPage = PAGE_FILE;
+  if (updateButton(1))
+  {
+    currentPage = PAGE_FILE;
+    saveFile(currentFileNr);
+  }
 }
 
 void displayToolsPage(bool firstCall)
@@ -538,6 +616,11 @@ void LPinit()
 void updateLaunchpadUI()
 {
   static uint8_t oldLPmode = LPMODE_PATTERN;
+  static uint8_t lastFourthCounter = 5;
+  
+  if (sequencerState == STATE_RUNNING && fourthCounter == 0 && lastFourthCounter != 0) LP1.setPadColor(CCindicator, LP_CYAN);
+  if (sequencerState == STATE_RUNNING && fourthCounter == 1 && lastFourthCounter != 1) LP1.setPadColor(CCindicator, LP_OFF);
+  lastFourthCounter = fourthCounter;
   
   if (LPdisplayMode == LPMODE_PATTERN)
   {
@@ -573,27 +656,39 @@ void updateLaunchpadUI()
 void LPsetPageFromSongData(bool forceUpdate)
 {
   static uint8_t oldArrangement[NR_ARRPOSITIONS];
+  static uint8_t oldArrangementId = 255;
 
   for (uint8_t arrId = 0;arrId < NR_ARRPOSITIONS; arrId++)
   {
-    if(SequencerData.arrangement[arrId] != oldArrangement[arrId] || forceUpdate)
+    if(SequencerData.arrangement[arrId] != oldArrangement[arrId] || currentArrPosition != oldArrangementId || forceUpdate)
     {
+      oldArrangementId = currentArrPosition;
       oldArrangement[arrId] = SequencerData.arrangement[arrId];
       uint8_t row = 8 - arrId / 8;
       uint8_t column = arrId % 8;
       uint8_t padId = 10 * row + 1 + column;
-      //Serial.printf("R: %d, C: %d, Pad: %d\n", row, column, padId);
       if (SequencerData.arrangement[arrId] != NO_SCENE)
       {
         uint8_t sceneId = SequencerData.arrangement[arrId];
         uint8_t color = SequencerData.sceneColors[sceneId];
-        LP1.setPadColor(padId, color);
+        if (currentArrPosition == arrId) LP1.setPadColorFlashing(padId, color);
+        else LP1.setPadColor(padId, color);
       }
       else LP1.setPadColor(padId, LP_OFF);
     }
   }
 }
 
+void LPsetArrEventStatus(uint8_t arrId, bool current)
+{
+  // set current arrposition flashing or solid
+  uint8_t row = 8 - arrId / 8;
+  uint8_t column = arrId % 8;
+  uint8_t padId = 10 * row + 1 + column;
+  uint8_t color = SequencerData.sceneColors[arrId];
+  if (current) LP1.setPadColorFlashing(padId, color);
+  else LP1.setPadColor(padId, color);
+}
 
 void LPsetTrackButtonsSceneMode(bool forceUpdate)
 {
@@ -687,6 +782,8 @@ void LPsetTrackRowFromSceneData(uint8_t trackId, bool forceUpdate)
   }
 }
 
+
+
 void LPsetStepIndicator()
 {
   static uint8_t previousColumn = 0;
@@ -735,10 +832,15 @@ void LPpageDecrease()
     LP1.page = LP1.page - 1;
     LPsetPageFromTrackData();
   }
-  if ( ((LPdisplayMode == LPMODE_SCENE) || (LPdisplayMode == LPMODE_SONG)) && LP1.page > 0)
+  if ( (LPdisplayMode == LPMODE_SCENE) && LP1.page > 0)
   {
     LP1.page = LP1.page - 1;
     LPsetSceneButtonsSceneMode(true);
+  }
+   if ( (LPdisplayMode == LPMODE_SONG) && LP1.page > 0 )
+  {
+    LP1.page = LP1.page - 1;
+    LPsetSceneButtonsSongMode(true);
   }
 }
 
@@ -834,6 +936,53 @@ uint16_t lpColor2tftColor(uint8_t lpColor)
   }
 }
 
+void setLPkeyboardView()
+{
+  uint8_t launchPadKeyboardView[] = {0,81,LP_BLUE, 0,82,LP_BLUE, 0,83,LP_BLUE, 0,84,LP_BLUE, 0,85,LP_BLUE, 0,86,LP_BLUE, 0,87,LP_BLUE, 0,88,LP_BLUE,
+                                            0,71,LP_BLUE, 0,72,LP_BLUE, 0,73,LP_BLUE, 0,74,LP_BLUE, 0,75,LP_BLUE, 0,76,LP_BLUE, 0,77,LP_BLUE, 0,78,LP_BLUE,
+                                            0,61,LP_BLUE, 0,62,LP_BLUE, 0,63,LP_BLUE, 0,64,LP_BLUE, 0,65,LP_BLUE, 0,66,LP_BLUE, 0,67,LP_BLUE, 0,68,LP_BLUE,
+                                            0,51,LP_BLUE, 
+                                            0,52,LP_CYAN, 0,53,LP_CYAN, 0,54,LP_CYAN, 0,55,LP_CYAN, 0,56,LP_CYAN, 0,57,LP_CYAN, 0,58,LP_CYAN, 0,41,LP_CYAN, 0,42,LP_CYAN, 0,43,LP_CYAN, 0,44,LP_CYAN,
+                                            0,11, LP_GREEN, 0,13, LP_RED, 
+                                            0, 17, LP_PURPLE, 0,18, LP_PINK};
+                                            
+  LP1.setMultiplePadColorState(launchPadKeyboardView, sizeof(launchPadKeyboardView));
+}
+
+// KEYBOARD FUNCTIONALITY (TBD)
+// ********************************************
+
+//uint8_t keyboardRequest(char * buf)
+//{
+//  uint8_t previousLPdisplayMode = LPdisplayMode;
+//  LPdisplayMode = LPMODE_KEYBOARD;
+//  char character = 0;
+//  bool exitCancel = false;
+//  bool exitOk = false;
+//  setLaunchPadKeyboardMode(true);
+//  setLPkeyboardView();
+//  while (character == 0)
+//  {
+//    character = LPkeyboardPoll();
+//  }
+//
+//  // poll LP until exit character
+//
+//  
+//  memcpy(buf, FileInfo.name, 11);
+//  buf[0] = character;
+//  setLaunchPadKeyboardMode(false);
+//  updateLaunchpadUI();
+//  LPdisplayMode = previousLPdisplayMode;
+//  updateLaunchpadUI();
+//  return 0;
+//}
+//
+//void displayKeyboardInputWindow()
+//{
+//  
+//}
+
 // HARDWARE CONTROLS
 // ********************************************
 int16_t getEncoderDirection(uint8_t encoderNr)
@@ -907,6 +1056,9 @@ void updateMcp()
         //mcp.writePort(MCP23017Port::A, 16);
         break;
       case 32:
+        //char buf[11];
+        //keyboardRequest(buf);
+        //Serial.println(buf);
         break;
       case 64:
         currentPage = PAGE_TOOLS;
