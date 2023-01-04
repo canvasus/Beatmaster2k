@@ -25,6 +25,10 @@ Component list:
 - Novation Launchpad Mini Mk3
 
 
-![My Image](2.jpg)
+![prototype1](2.jpg)
 
 (prototype assembly)
+
+![cad](3.PNG)
+
+(parts for 3D print and milling in Onshape)
