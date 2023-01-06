@@ -8,10 +8,11 @@ MCP23017 mcp = MCP23017(MCP23017_ADDR, Wire1);
 uint8_t currentPage = PAGE_FILE;
 uint8_t LPdisplayMode = LPMODE_PATTERN;
 uint8_t currentFileNr = 0;
+uint8_t LPcopyFirstPage = 0;
 
 //                      .pageType    .name       .nrChildren  .children
 const page pages[] = {
-                      {PAGE_PAR,      "SONG",     3,          {SONG_BPM, SONG_PLAYMODE, MIDI_CLOCK}},
+                      {PAGE_PAR,      "SONG 1/2", 3,          {SONG_BPM, SONG_PLAYMODE, MIDI_CLOCK}},
                       {PAGE_PAR,      "PATTERN",  4,          {PATTERN_NR, PATTERN_LENGTH, PATTERN_SPEED, PATTERN_EVENTLENGTHDEF}},
                       {PAGE_PAR,      "EVENT",    1,          {EVENT_LENGTH}},
                       {PAGE_PAR,      "TRACK",    3,          {TRACK_CHANNEL, TRACK_OUTPUT, TRACK_TRANSPOSESTATUS}},
@@ -19,33 +20,36 @@ const page pages[] = {
                       {PAGE_LISTDEVICES,  "USBDEV",    1,     {}},
                       {PAGE_PAR,      "SCENE",    2,          {SCENE_NR, SCENE_COLOR}},
                       {PAGE_TOOLS,    "TOOLS",    3,          {TOOLS_SELECTION, TOOLS_ACTION, TOOLS_TRANSPOSE}},
-                      {PAGE_SAVE,     "SAVE",     0,          {}}
+                      {PAGE_SAVE,     "SAVE",     0,          {}},
+                      {PAGE_SONG2,    "SONG 2/2", 0,          {}}
 };
 
-//                                        name        .minValue .maxValue .multiplier .displayPrecision  .getFunction .setFunction  .enumFunction                                          
+//                                        name        .minValue .maxValue .multiplier .displayPrecision  
+//                                                                                          .getFunction            .setFunction              .enumFunction
 const parameters displayParameters[] = { 
-                                         {"LENGTH",   1,        128,       1,         0,    &getTrackLengthColumns, &setTrackLengthColumns, nullptr},
-                                         {"SPEED",    0,        4,         1,         0,    &getPatternSpeed, &setPatternSpeed, &getPatternSpeedEnum},
-                                         {"DEF.LEN",  0,        64,        1,         0,    &getTrackDefLength, &setTrackDefLength, nullptr},
-                                         {"OUTPUT",   0,        7,         1,         0,    &getTrackOutput, &setTrackOutput, &getOutputEnum},
-                                         {"BPM",      20,       300,       1,         0,    &getBpm, &setBpm, nullptr},
-                                         {"CHANNEL",  0,        17,        1,         0,    &getTrackChannel, &setTrackChannel, &get0_16_note},
-                                         {"LENGTH",   1,        128,       1,         0,    &getEventLength, &setEventLength, nullptr},
-                                         {"REC.TRP",  0,        2,         1,         0,    &getTransposeStatus, &setTransposeStatus, &getNoYesSelectedEnum},
-                                         {"NR",       0,        7,         1,         0,    &getTrackPatternNr, &setTrackPatternNr, nullptr},
-                                         {"NR",       0,        15,        1,         0,    &getSceneNr, &setSceneNr, nullptr},
-                                         {"COLOR",    0,        127,       1,         0,    &getSceneColor, &setSceneColor, nullptr},
-
-                                         {"SELECTN",  0,        3,         1,         0,    &getToolSelection, &setToolSelection, getSelectionEnum},
-                                         {"ACTION",   0,        2,         1,         0,    &getToolAction, &setToolAction, getActionEnum},
-                                         {"TRANSP",   -24,      24,        1,         0,    &getToolTranspose, &setToolTranspose, nullptr},
-                                         {"MIDI CLK", 0,        1,         1,         0,    &getMidiClockOnOff, &setMidiClockOnOff, &getNoYesSelectedEnum},
-                                         {"CHAIN",    0,        2,         1,         0,    &getPlaymode, &setPlaymode, &getSongModeEnum}
+                                         {"LENGTH",   1,        128,       1,         0,    &getTrackLengthColumns, &setTrackLengthColumns,   nullptr},
+                                         {"SPEED",    0,        4,         1,         0,    &getPatternSpeed,       &setPatternSpeed,         &getPatternSpeedEnum},
+                                         {"DEF.LEN",  0,        64,        1,         0,    &getTrackDefLength,     &setTrackDefLength,       nullptr},
+                                         {"OUTPUT",   0,        7,         1,         0,    &getTrackOutput,        &setTrackOutput,          &getOutputEnum},
+                                         {"BPM",      20,       300,       1,         0,    &getBpm,                &setBpm,                  nullptr},
+                                         {"CHANNEL",  0,        17,        1,         0,    &getTrackChannel,       &setTrackChannel,         &get0_16_note},
+                                         {"LENGTH",   1,        128,       1,         0,    &getEventLength,        &setEventLength,          nullptr},
+                                         {"REC.TRP",  0,        2,         1,         0,    &getTransposeStatus,    &setTransposeStatus,      &getNoYesSelectedEnum},
+                                         {"NR",       0,        7,         1,         0,    &getTrackPatternNr,     &setTrackPatternNr,       nullptr},
+                                         {"NR",       0,        15,        1,         0,    &getSceneNr,            &setSceneNr,              nullptr},
+                                         {"COLOR",    0,        127,       1,         0,    &getSceneColor,         &setSceneColor,           nullptr},
+                                         {"SELECTN",  0,        3,         1,         0,    &getToolSelection,      &setToolSelection,        getSelectionEnum},
+                                         {"ACTION",   0,        2,         1,         0,    &getToolAction,         &setToolAction,           getActionEnum},
+                                         {"TRANSP",   -24,      24,        1,         0,    &getToolTranspose,      &setToolTranspose,        nullptr},
+                                         {"MIDI CLK", 0,        1,         1,         0,    &getMidiClockOnOff,     &setMidiClockOnOff,       &getNoYesSelectedEnum},
+                                         {"CHAIN",    0,        2,         1,         0,    &getPlaymode,           &setPlaymode,             &getSongModeEnum}
                                         };
 
                                         
 #define NR_DISPLAYPARAMETERS sizeof(displayParameters) / sizeof(displayParameters[0])
 float displayedParameterValues[NR_DISPLAYPARAMETERS];
+uint8_t keyVariableValue[NR_KEY_VARS] = {255, 255, 255, 255, 255, 255};
+bool keyVariableChange[NR_KEY_VARS] = {false, false, false, false, false, false};
 
 void setupUI()
 {
@@ -57,7 +61,7 @@ void setupUI()
   pinMode(ROT1_SW, INPUT_PULLUP);
   pinMode(ROT2_SW, INPUT_PULLUP);
   initMcp();
-  updateHeader(currentTrack, currentPattern, 120, true);
+  updateHeader(true);
 }
 
 void showStartupScreen()
@@ -81,7 +85,13 @@ void showStartupScreen()
 void updateUI()
 {
   static elapsedMillis mcpTimer = 0;
-  updateDisplayUI();
+  static elapsedMillis displayTimer = 0;
+  if (displayTimer > 75)
+  {
+    displayTimer = 0;
+    updateDisplayUI();
+  }
+  
   updateLaunchpadUI();
   if (mcpTimer > 100)
   {
@@ -95,83 +105,83 @@ void updateUI()
 
 void updateDisplayUI()
 {
-  static uint8_t oldPage = PAGE_SONG;
-  static bool firstCall = true;
-  static uint8_t forceVariableUpdate = false;
-  if (pages[currentPage].pageType == PAGE_PAR) updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, firstCall, forceVariableUpdate);
-  else handleSpecialPages(firstCall);
-  firstCall = !(oldPage == currentPage);
-  oldPage =  currentPage;
-  forceVariableUpdate = updateHeader(currentTrack, currentPattern, SequencerData.bpm, false);
-  LPcopy_update(firstCall, forceVariableUpdate);
+  signalKeyVariableChange();
+  if (pages[currentPage].pageType == PAGE_PAR) updateParameterPage(pages[currentPage].children, pages[currentPage].nrChildren, keyVariableChange[KEY_VAR_UI_PAGE], false);
+  else handleSpecialPages(keyVariableChange[KEY_VAR_UI_PAGE]);
+  updateHeader(false);
+  LPcopy_update(keyVariableChange[KEY_VAR_UI_PAGE]);
 }
 
-bool updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCall)
+void signalKeyVariableChange()
 {
-  static uint8_t oldTrackNr = 255;
-  static uint8_t oldPatternNr = 255;
+  uint8_t * keyVars[NR_KEY_VARS] = {&currentPage, &LP1.page, &currentTrack, &currentPattern, &currentScene, &currentArrPosition};
+  for (uint8_t keyVarIndex = 0; keyVarIndex < NR_KEY_VARS; keyVarIndex++)
+  {
+    keyVariableChange[keyVarIndex] = (keyVariableValue[keyVarIndex] != *keyVars[keyVarIndex]);
+    keyVariableValue[keyVarIndex] = *keyVars[keyVarIndex];
+  }
+}
+
+void updateHeader(bool firstCall)
+{
   static uint8_t oldBpm = 255;
-  static uint8_t oldPage = 255;
-  static uint8_t oldLPpage = 255;
   static uint8_t oldTrackColumns = 255;
+
   if (firstCall)
   {
-    tft.fillRect(HEADER_X, HEADER_Y, HEADER_WIDTH, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.fillRect(PAGEINDICATOR_WIDTH + 1, 0, HEADER_WIDTH, HEADER_HEIGHT, ILI9341_LIGHTGREY);
     tft.setTextColor(ILI9341_BLACK);
     tft.setFont(Arial_12);
-    tft.setCursor(HEADER_TEXT_X, 5 + 0* HEADER_OFFSET_Y);
+    tft.setCursor(HEADER_TEXT_X  + 0* HEADER_OFFSET_X, 5);
     tft.print("TRK");
-    tft.setCursor(HEADER_TEXT_X, 5 + 2* HEADER_OFFSET_Y);
+    tft.setCursor(HEADER_TEXT_X  + 2* HEADER_OFFSET_X, 5);
     tft.print("PTN");
-    tft.setCursor(HEADER_TEXT_X, 5 + 4* HEADER_OFFSET_Y);
+    tft.setCursor(HEADER_TEXT_X  + 4* HEADER_OFFSET_X, 5);
     tft.print("BPM");
   }
-  if (oldPage != currentPage)
+
+  if (keyVariableChange[KEY_VAR_UI_PAGE])
   {
-    oldPage = currentPage;
-    tft.fillRect(0, 0, PAGEINDICATOR_WIDTH, PAGEINDICATOR_HEIGHT, PAGEINDICATOR_COLOR);
+    tft.fillRect(0, 0, PAGEINDICATOR_WIDTH, HEADER_HEIGHT, PAGEINDICATOR_COLOR);
     tft.setCursor(3, 6);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_WHITE);
     tft.print(pages[currentPage].name);
   }
-  if (oldTrackNr != trackNr)
+  
+  if (keyVariableChange[KEY_VAR_TRACK_NR])
   {
-    tft.fillRect(HEADER_TEXT_X, 5 + HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
-    tft.fillRect(HEADER_TEXT_X + HEADER_WIDTH - 16, HEADER_OFFSET_Y, 16, HEADER_OFFSET_Y - 16, lpColor2tftColor(tracks[currentTrack]->color));
-    tft.setCursor(HEADER_TEXT_X + 16, 5 + HEADER_OFFSET_Y);
+    tft.fillRect(HEADER_TEXT_X  + 1 * HEADER_OFFSET_X - 2, 2, 16, HEADER_HEIGHT - 4, lpColor2tftColor(tracks[currentTrack]->color));
+    tft.setCursor(HEADER_TEXT_X  + 1 * HEADER_OFFSET_X, 3);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
-    tft.print(trackNr);
-    oldTrackNr = trackNr;
-    return true;
+    tft.print(keyVariableValue[KEY_VAR_TRACK_NR]);
   }
-  if (oldPatternNr != patternNr)
+  
+  if (keyVariableChange[KEY_VAR_PATTERN_NR])
   {
-    tft.fillRect(HEADER_TEXT_X, 5 + 3* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
-    tft.setCursor(HEADER_TEXT_X, 5 + 3* HEADER_OFFSET_Y);
+    tft.fillRect(HEADER_TEXT_X  + 3 * HEADER_OFFSET_X, 0, HEADER_OFFSET_X, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X + 3* HEADER_OFFSET_X, 3);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
-    tft.printf("%02d", patternNr);
-    oldPatternNr = patternNr;
-    return true;
+    tft.printf("%02d", keyVariableValue[KEY_VAR_PATTERN_NR]);
   }
-  if (oldBpm != bpm)
+
+  if (oldBpm != SequencerData.bpm)
   {
-    tft.fillRect(HEADER_TEXT_X, 5 + 5* HEADER_OFFSET_Y, HEADER_WIDTH, HEADER_OFFSET_Y - 1, ILI9341_LIGHTGREY);
-    tft.setCursor(HEADER_TEXT_X, 5 + 5* HEADER_OFFSET_Y);
+    tft.fillRect(HEADER_TEXT_X  + 5 * HEADER_OFFSET_X, 0, HEADER_OFFSET_X, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X  + 5 * HEADER_OFFSET_X, 3);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
-    tft.printf("%03d", bpm);
-    oldBpm = bpm;
+    tft.printf("%03d", SequencerData.bpm);
+    oldBpm = SequencerData.bpm;
   }
-  if ( (oldLPpage != LP1.page) || (oldTrackColumns !=  tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN)))
+
+  if ( (keyVariableChange[KEY_VAR_LP_PAGE]) || (oldTrackColumns !=  tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN)))
   {
     uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN);
-    oldLPpage = LP1.page;
     oldTrackColumns = trackColumns;
   }
-  return false;
 }
 
 void drawMenuButton(uint8_t index, String text, bool selected)
@@ -200,20 +210,24 @@ void drawMenuButton(uint8_t index, String text, bool selected)
   tft.print(text);
 }
 
+void clearMainArea()
+{
+  tft.fillRect(0, PAGEINDICATOR_HEIGHT, MAIN_AREA_WIDTH, MAIN_AREA_HEIGHT , MAIN_BG_COLOR);
+}
+
 void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParameters, bool firstCall, bool forceVariableUpdate)
 {
   static int16_t selectedButton = 0;
   
-  // draw statics on first call only
   if (firstCall)
   {
-    tft.fillRect(0, PAGEINDICATOR_HEIGHT, HEADER_X - 1, NAV_AREA_HEIGHT , MAIN_BG_COLOR);
+    clearMainArea();
     selectedButton = 0;
     encoders[0].write(selectedButton);
     for (uint8_t i = 0; i < nrParameters; i++) drawParameterRow(i, parameterArray[i], i == 0);
   }
   
-  // update value if changed only
+  // update parameter value if changed
   for (uint8_t i = 0; i < nrParameters; i++)
   {
     float currentValue = getValue(parameterArray[i]);
@@ -298,6 +312,9 @@ void handleSpecialPages(bool firstCall)
     case PAGE_SAVE:
       displaySavePage(firstCall);
       break;
+    case PAGE_SONG2:
+      displaySongPage2(firstCall);
+      break;
   }
 }
 
@@ -305,7 +322,7 @@ void displayDevicePage(bool firstCall)
 {
   if (firstCall)
   {
-    tft.fillRect(0, PAGEINDICATOR_HEIGHT, SCREEN_XRES - HEADER_WIDTH - 1, SCREEN_YRES - PAGEINDICATOR_HEIGHT , MAIN_BG_COLOR);
+    clearMainArea();
     for (uint8_t usbIndex = 0; usbIndex < 5; usbIndex++)
     {
       char buf[16];
@@ -321,10 +338,9 @@ void displayDevicePage(bool firstCall)
 
 void displayFilePage(bool firstCall)
 {
-
   if (firstCall)
   {
-    tft.fillRect(0, PAGEINDICATOR_HEIGHT, SCREEN_XRES - HEADER_WIDTH - 1, 160 , MAIN_BG_COLOR);
+    clearMainArea();
     displayFileNr(currentFileNr);
     displayFileName(currentFileNr);
     displayLoadSave();
@@ -348,7 +364,7 @@ void displayFilePage(bool firstCall)
       LPsetSceneButtonsSceneMode(true);
       LPsetPageFromSceneData(true);
     }
-    LPcopy_update(true, true);
+    LPcopy_update(true);
     setBpm(SequencerData.bpm);
   }
   
@@ -423,7 +439,7 @@ void displaySavePage(bool firstCall)
   
   if (firstCall)
   {
-    tft.fillRect(0, PAGEINDICATOR_HEIGHT, SCREEN_XRES - HEADER_WIDTH - 1, 160 , MAIN_BG_COLOR);
+    clearMainArea();
     tft.setCursor(10, PAGEINDICATOR_HEIGHT + 30);
     tft.setFont(Arial_12);
     tft.setTextColor(ILI9341_WHITE);
@@ -464,25 +480,55 @@ void displayToolsPage(bool firstCall)
   if (updateButton(0))
   {
     doToolAction();
-    LPcopy_update(false, true);
+    LPcopy_update(false);
     if (LPdisplayMode == LPMODE_PATTERN) LPsetPageFromTrackData();
     if (LPdisplayMode == LPMODE_SONG) LPsetPageFromSongData(true);
   }
+}
+
+void displaySongPage2(bool firstCall)
+{
+  static uint8_t patternLengths[NR_TRACKS];
+  static uint8_t patternColumnPositions[NR_TRACKS];
+  const uint16_t boxXpos = 8;
+  const uint16_t firstBoxYpos = PAGEINDICATOR_HEIGHT + 10;
+  const uint16_t boxYpadding = 2;
+  const uint16_t boxHeight = 20;
+  const uint16_t boxColumnWidthPixels = 2;
   
+  if (firstCall) clearMainArea();
+
+  for (uint8_t trackId = 0; trackId < NR_TRACKS; trackId++)
+  {
+    uint8_t patternLength = tracks[trackId]->getPatternLengthColumns(TICKS_PER_COLUMN);
+    uint8_t patternColumnPosition = tracks[trackId]->getCurrentColumn(TICKS_PER_COLUMN);
+    uint16_t color = lpColor2tftColor(tracks[trackId]->color);
+    uint8_t row = 6 - trackId;
+     
+    if (patternLength != patternLengths[trackId] || patternColumnPosition == 0)
+    {
+      patternLengths[trackId] = patternLength;
+      tft.fillRect(boxXpos - 1, firstBoxYpos + row * (boxHeight + boxYpadding), patternLength * boxColumnWidthPixels + 2, boxHeight , ILI9341_DARKGREY);
+    }
+     
+    if (patternColumnPosition != patternColumnPositions[trackId])
+    {
+      uint16_t fillStart = boxXpos + (patternColumnPosition - 1) * boxColumnWidthPixels;
+      uint16_t fillWidth = boxColumnWidthPixels;
+      patternColumnPositions[trackId] = patternColumnPosition;
+      tft.fillRect(fillStart, firstBoxYpos + row * (boxHeight + boxYpadding) + 1, fillWidth, boxHeight - 2 , color);
+    }
+  }
 }
 
 
 // PATTERN COPY DISPLAY FUNCTIONS
 // ******************************************** 
 
-void LPcopy_update(bool firstCall, bool forceVariableUpdate)
+void LPcopy_update(bool firstCall)
 {
   static uint16_t oldTrackColumns = 255;
-  static uint8_t oldPattern = 255;
-  static uint8_t oldTrack = 255;
-  static uint8_t oldPage = 0;
   static uint8_t oldLowerRow = 0;
-  //uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
   uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN);
   uint8_t maxPages = trackColumns/8 + !!(trackColumns%8);
   if (firstCall)
@@ -490,36 +536,31 @@ void LPcopy_update(bool firstCall, bool forceVariableUpdate)
     LPcopy_clearArea();
     LPcopy_drawBackground(maxPages);
     LPcopy_updateAllEvents();
-    oldTrack = currentTrack;
     oldTrackColumns = trackColumns;
-    oldPattern = tracks[currentTrack]->getActivePatternId();
     oldLowerRow = tracks[currentTrack]->lowerRow;
   }
-  if (LP1.page != oldPage)
-  {
-    oldPage = LP1.page;
-    LPcopy_setSelectedPage();
-  }
-  if (oldTrackColumns !=  trackColumns || oldPattern != tracks[currentTrack]->getActivePatternId() || oldTrack != currentTrack || oldLowerRow != tracks[currentTrack]->lowerRow)
+  
+  if (keyVariableChange[KEY_VAR_LP_PAGE]) LPcopy_setSelectedPage();
+  
+  if ( (keyVariableChange[KEY_VAR_TRACK_NR]) || (keyVariableChange[KEY_VAR_PATTERN_NR]) || (oldTrackColumns !=  trackColumns) || oldLowerRow != tracks[currentTrack]->lowerRow)
   {
     // IF nr columns changed redraw all (could be last parts only)
     // IF track or pattern changed redraw all
     LPcopy_clearArea();
     LPcopy_drawBackground(maxPages);
     LPcopy_updateAllEvents();
-    oldTrack = currentTrack;
     oldTrackColumns = trackColumns;
-    oldPattern = tracks[currentTrack]->getActivePatternId();
     oldLowerRow = tracks[currentTrack]->lowerRow;
     LPcopy_setSelectedPage();
   }
   if (sequencerState == STATE_RUNNING) LPcopy_setStepIndicator();
 }
 
-void LPcopy_clearArea() { tft.fillRect(LPCOPY_XPOS, LPCOPY_YPOS, HEADER_X - 10, 40, MAIN_BG_COLOR); }
+void LPcopy_clearArea() { tft.fillRect(0, LPCOPY_YPOS, LPCOPY_WIDTH, LPCOPY_HEIGHT, MAIN_BG_COLOR); }
 
 void LPcopy_drawBackground(uint8_t nrPages)
 {
+  nrPages = min(nrPages, 8);
   for (uint8_t page = 0; page < nrPages; page++)
   {
     for (uint8_t column = 0; column < 8; column++)
@@ -535,7 +576,6 @@ void LPcopy_drawBackground(uint8_t nrPages)
 
 void LPcopy_setSelectedPage()
 {
-  //uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
   uint8_t trackColumns = tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN);
   uint8_t maxPages = trackColumns/8 + !!(trackColumns%8);
   for (uint8_t page = 0; page < maxPages; page++)
@@ -548,7 +588,6 @@ void LPcopy_setSelectedPage()
 
 void LPcopy_updateAllEvents()
 {
-  //uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
   uint8_t maxTrackColumns = tracks[currentTrack]->getPatternLengthColumns(TICKS_PER_COLUMN);
   for (uint8_t trackColumn = 0; trackColumn < maxTrackColumns; trackColumn++) { LPcopy_updateColumn(trackColumn); }
 }
@@ -556,7 +595,6 @@ void LPcopy_updateAllEvents()
 void LPcopy_updateColumn(uint8_t trackColumn)
 {
   uint8_t padState = LP_OFF;
-  //uint8_t ticksPerColumn = 24 / LP1.xZoomLevel;
   uint8_t page =  trackColumn/8;// + !!(trackColumn%8);
   uint16_t tickTemp = trackColumn * TICKS_PER_COLUMN;
   uint8_t lowerRow = tracks[currentTrack]->lowerRow;
@@ -586,7 +624,6 @@ void LPcopy_updateSingleEvent(uint8_t page, uint8_t column, uint8_t row, uint8_t
 void LPcopy_setStepIndicator()
 {
   static uint8_t previousColumn = 0;
-  //uint16_t  ticksPerColumn = ticksPerBeat/LP1.xZoomLevel;
   uint8_t column = tracks[currentTrack]->getCurrentColumn(TICKS_PER_COLUMN);
  
   if (column != previousColumn)
@@ -782,8 +819,6 @@ void LPsetTrackRowFromSceneData(uint8_t trackId, bool forceUpdate)
   }
 }
 
-
-
 void LPsetStepIndicator()
 {
   static uint8_t previousColumn = 0;
@@ -822,7 +857,6 @@ void LPpageIncrease()
     LP1.page = LP1.page + 1;
     LPsetSceneButtonsSongMode(true);
   }
-  
 }
 
 void LPpageDecrease()
@@ -936,53 +970,6 @@ uint16_t lpColor2tftColor(uint8_t lpColor)
   }
 }
 
-void setLPkeyboardView()
-{
-  uint8_t launchPadKeyboardView[] = {0,81,LP_BLUE, 0,82,LP_BLUE, 0,83,LP_BLUE, 0,84,LP_BLUE, 0,85,LP_BLUE, 0,86,LP_BLUE, 0,87,LP_BLUE, 0,88,LP_BLUE,
-                                            0,71,LP_BLUE, 0,72,LP_BLUE, 0,73,LP_BLUE, 0,74,LP_BLUE, 0,75,LP_BLUE, 0,76,LP_BLUE, 0,77,LP_BLUE, 0,78,LP_BLUE,
-                                            0,61,LP_BLUE, 0,62,LP_BLUE, 0,63,LP_BLUE, 0,64,LP_BLUE, 0,65,LP_BLUE, 0,66,LP_BLUE, 0,67,LP_BLUE, 0,68,LP_BLUE,
-                                            0,51,LP_BLUE, 
-                                            0,52,LP_CYAN, 0,53,LP_CYAN, 0,54,LP_CYAN, 0,55,LP_CYAN, 0,56,LP_CYAN, 0,57,LP_CYAN, 0,58,LP_CYAN, 0,41,LP_CYAN, 0,42,LP_CYAN, 0,43,LP_CYAN, 0,44,LP_CYAN,
-                                            0,11, LP_GREEN, 0,13, LP_RED, 
-                                            0, 17, LP_PURPLE, 0,18, LP_PINK};
-                                            
-  LP1.setMultiplePadColorState(launchPadKeyboardView, sizeof(launchPadKeyboardView));
-}
-
-// KEYBOARD FUNCTIONALITY (TBD)
-// ********************************************
-
-//uint8_t keyboardRequest(char * buf)
-//{
-//  uint8_t previousLPdisplayMode = LPdisplayMode;
-//  LPdisplayMode = LPMODE_KEYBOARD;
-//  char character = 0;
-//  bool exitCancel = false;
-//  bool exitOk = false;
-//  setLaunchPadKeyboardMode(true);
-//  setLPkeyboardView();
-//  while (character == 0)
-//  {
-//    character = LPkeyboardPoll();
-//  }
-//
-//  // poll LP until exit character
-//
-//  
-//  memcpy(buf, FileInfo.name, 11);
-//  buf[0] = character;
-//  setLaunchPadKeyboardMode(false);
-//  updateLaunchpadUI();
-//  LPdisplayMode = previousLPdisplayMode;
-//  updateLaunchpadUI();
-//  return 0;
-//}
-//
-//void displayKeyboardInputWindow()
-//{
-//  
-//}
-
 // HARDWARE CONTROLS
 // ********************************************
 int16_t getEncoderDirection(uint8_t encoderNr)
@@ -1036,7 +1023,8 @@ void updateMcp()
     switch (portB)
     {
       case 8:
-        currentPage = PAGE_SONG;
+        if (currentPage == PAGE_SONG) currentPage = PAGE_SONG2;
+        else currentPage = PAGE_SONG;
         //mcp.writePort(MCP23017Port::A, 8); // write leds, 1 = led lit
         break;
       case 4:

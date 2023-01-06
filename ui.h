@@ -11,33 +11,35 @@
 #include <Bounce.h>
 #include "sdMgr.h"
 
-#define SCREEN_YRES 240
-#define SCREEN_XRES 320
-#define BUTTON_HEIGHT 26
-#define BUTTON_WIDTH  150
-#define BUTTON_PADDING 5
-#define VAR_NAME_WIDTH 100
-#define VAR_VALUE_WIDTH 155
-#define NAV_AREA_HEIGHT 170
+#define SCREEN_YRES           240
+#define SCREEN_XRES           320
+#define BUTTON_HEIGHT         26
+#define BUTTON_WIDTH          150
+#define BUTTON_PADDING        5
+#define VAR_NAME_WIDTH        100
+#define VAR_VALUE_WIDTH       155
+#define MAIN_AREA_HEIGHT      170
+#define MAIN_AREA_WIDTH       SCREEN_XRES
 
-#define HEADER_X        270
-#define HEADER_Y        0
-#define HEADER_WIDTH    50
-#define HEADER_HEIGHT   170
-#define HEADER_TEXT_X   274
-#define HEADER_OFFSET_Y 25  
-#define PAGEINDICATOR_HEIGHT 30 
-#define PAGEINDICATOR_WIDTH 140 
+#define PAGEINDICATOR_HEIGHT  30 
+#define PAGEINDICATOR_WIDTH   100 
+#define HEADER_X              PAGEINDICATOR_WIDTH + 1
+#define HEADER_Y              0
+#define HEADER_WIDTH          SCREEN_XRES - PAGEINDICATOR_WIDTH
+#define HEADER_HEIGHT         PAGEINDICATOR_HEIGHT
+#define HEADER_TEXT_X         HEADER_X + 5
+#define HEADER_OFFSET_X       35
 
-#define MAIN_BG_COLOR ILI9341_NAVY
-#define PAGEINDICATOR_COLOR ILI9341_BLUE
+#define MAIN_BG_COLOR         ILI9341_NAVY
+#define PAGEINDICATOR_COLOR   ILI9341_BLUE
 
-#define LPCOPY_XPOS 5
-#define LPCOPY_YPOS 200
-#define LPCOPY_BOXDIM 4
+#define LPCOPY_XPOS           5
+#define LPCOPY_YPOS           200
+#define LPCOPY_WIDTH          SCREEN_XRES
+#define LPCOPY_HEIGHT         40
+#define LPCOPY_BOXDIM         4
 #define LPCOPY_BOX_OUTLINE_COLOR ILI9341_BLACK
 #define LPCOPY_BOX_SELECTED_COLOR ILI9341_LIGHTGREY
-
 
 #define TFT_DC  9
 #define TFT_CS 10
@@ -64,6 +66,7 @@
 #define PAGE_SCENE        6
 #define PAGE_TOOLS        7
 #define PAGE_SAVE         8
+#define PAGE_SONG2        9
 
 #define PATTERN_LENGTH          0
 #define PATTERN_SPEED           1
@@ -100,6 +103,15 @@
 #define LPMODE_SONG     2
 #define LPMODE_KEYBOARD 3
 
+#define KEY_VAR_UI_PAGE    0
+#define KEY_VAR_LP_PAGE    1
+#define KEY_VAR_TRACK_NR   2
+#define KEY_VAR_PATTERN_NR 3
+#define KEY_VAR_SCENE_NR   4
+#define KEY_VAR_ARRPOS_NR  5
+
+#define NR_KEY_VARS 6
+
 extern uint8_t LPdisplayMode;
 extern uint8_t currentFileNr;
 
@@ -134,9 +146,10 @@ void updateUI();
 void updateDisplayUI();
 void updateLaunchpadUI();
 
-bool updateHeader(uint8_t trackNr, uint8_t patternNr, uint8_t bpm, bool firstCall);
+void signalKeyVariableChange();
+void updateHeader(bool firstCall);
 
-void clearNavigationArea();
+void clearMainArea();
 void drawMenuButton(uint8_t index, String text, bool selected);
 
 void updateParameterPage(const uint8_t * parameterArray, const uint8_t nrParameters, bool firstCall, bool forceVariableUpdate);
@@ -155,13 +168,12 @@ void displayFileName_strEdit(char * name,  uint8_t markedIndex);
 void displayLoadSave();
 void displaySavePage(bool firstCall);
 
+void displaySongPage2(bool firstCall);
+
 void displayEncoderButtonHint(uint8_t encoder, String hint, uint16_t color);
 void displayToolsPage(bool firstCall);
 
-//uint8_t keyboardRequest(char * buf);
-//void displayKeyboardInputWindow();
-
-void LPcopy_update(bool firstCall, bool forceVariableUpdate);
+void LPcopy_update(bool firstCall);
 void LPcopy_clearArea();
 void LPcopy_drawBackground(uint8_t nrPages);
 void LPcopy_setSelectedPage();
@@ -192,7 +204,6 @@ void LPsetPageFromSceneData(bool forceUpdate);
 void LPsetTrackRowFromSceneData(uint8_t trackId, bool forceUpdate);
 void LPsetPageFromSongData(bool forceUpdate);
 
-void setLPkeyboardView();
 uint16_t lpColor2tftColor(uint8_t lpColor);
 
 int16_t getEncoderDirection(uint8_t encoderNr);

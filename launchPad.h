@@ -21,12 +21,11 @@ class LaunchPad {
   private:
     uint8_t _LP_id;
     
-    MIDIDevice_BigBuffer *_midiDevice = nullptr;
+    MIDIDevice_BigBuffer *_midiDevice = nullptr; // Note: BigBuffer is not really needed
   public:
     LaunchPad(uint8_t LP_id);
     bool shift;
     uint8_t page;
-    uint8_t xZoomLevel;
     uint8_t yScrollStep;
     void begin(MIDIDevice_BigBuffer *midiDevice);
     void setProgrammerMode();

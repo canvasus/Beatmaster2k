@@ -28,10 +28,9 @@ int16_t currentEvent        = -1;
 uint8_t currentScene        = 0;
 uint8_t currentArrPosition  = 0;
 uint8_t currentArrPositionLength = 0;
-
 uint8_t fourthCounter = 0;
 
-uint8_t sceneLengthColumns = 16; // TEMPORARY, MOVE TO SequencerData !!!
+uint8_t sceneLengthColumns = 16; // TEMPORARY, MOVE TO SequencerData if used
 
 TrackEvent eventClipBoard[NR_TRACK_EVENTS];
 uint8_t nrClipBoardEvents = 0;
@@ -59,7 +58,6 @@ void initSequencer()
 
 void tickTracks()
 {
-  //static uint8_t fourthCounter = 0;
   // 24 ppq
   if (sequencerState == STATE_RUNNING)
   {
@@ -159,7 +157,7 @@ void setTrackPatternNr(float patternNr)
 {
   if (sequencerState == STATE_STOPPED) tracks[currentTrack]-> setPatternId((uint8_t)patternNr);
   if (sequencerState == STATE_RUNNING) tracks[currentTrack]-> cuePatternId((uint8_t)patternNr);
-  currentPattern = patternNr;
+  currentPattern = (uint8_t)patternNr;
 }
 
 float getTransposeStatus() { return (float)tracks[currentTrack]->trackRespondToTranspose; }
@@ -189,7 +187,6 @@ float getPatternSpeed()
   uint8_t patternId = tracks[currentTrack]->getActivePatternId();
   return (float)tracks[currentTrack]->getPatternSpeed(patternId);
 }
-
 
 String getPatternSpeedEnum(uint8_t value)
 {
@@ -263,6 +260,7 @@ void setSceneNr(float sceneId)
 {
   currentScene = (uint8_t)sceneId;
   setScene(sceneId);
+  if (LPdisplayMode == LPMODE_SONG) LPsetPageFromSongData(true);
 }
 
 float getSceneColor() { return SequencerData.sceneColors[currentScene]; }
@@ -406,7 +404,7 @@ void pasteSelection()
   }
   
   LPsetPageFromTrackData();
-  LPcopy_update(false, true);
+  LPcopy_update(false);
 }
 
 void clearSelection()
@@ -444,11 +442,8 @@ void updateSequencer()
 
 void updateSongMode()
 {
-  // TBD: this does not handle repetitions of same scene
+  // NOTE: many improvements needed. This concept does not handle repetitions of same scene
   
-  // make sure all tracks are playing current scene config
-  // then cue next scene once
-
   bool allTracksInCurrentScene = true;
   uint8_t sceneId = SequencerData.arrangement[currentArrPosition];
   static uint8_t sceneAgeColumns = 0;
@@ -461,7 +456,6 @@ void updateSongMode()
   if ( allTracksInCurrentScene && (SequencerData.arrangement[currentArrPosition + 1] != NO_SCENE))
   {
     setSceneNr(SequencerData.arrangement[currentArrPosition + 1]);
-    //Serial.printf("Setting scene: %d\n", SequencerData.arrangement[currentArrPosition + 1]);
     currentArrPosition++;
   }
 }

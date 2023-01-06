@@ -2,11 +2,9 @@
 
 LaunchPad::LaunchPad(uint8_t LP_id)
 {
-  // constructor code here
   _LP_id = LP_id;
   shift = false;
   page = 0;
-  xZoomLevel = 4;
   yScrollStep = 4;
 }
 

@@ -194,7 +194,7 @@ void sendMidiClock()
   MIDI.sendClock();
   for (uint8_t index = 0; index < CNT_DEVICES; index++)
   {
-    if (*midiDrivers[index]) midiDrivers[index]->sendRealTime(usbMIDI.Clock);
+    if (*midiDrivers[index] && (index != launchPadMidiIndex)) midiDrivers[index]->sendRealTime(usbMIDI.Clock);
     midiDrivers[index]->send_now();
   }
 }
@@ -218,14 +218,15 @@ void sendMidiStop()
   }
 }
 
-
 void LPNoteOn(byte channel, byte note, byte velocity)
 {
   uint8_t padColumn = LPnoteToPadColumn(note) + LP1.page * 8;
   uint16_t tickTemp = padColumn * TICKS_PER_COLUMN;
   uint8_t lowerRow = tracks[currentTrack]->lowerRow;
   uint8_t padRow = LPnoteToPadRow(note);
-   
+
+  //TODO: Move all this to sequencer functions
+
   if ( ( LPdisplayMode == LPMODE_PATTERN ) && ( sequencerEditMode == MODE_PATTERNEDIT) && (velocity > 0) )
   {
     // Add or remove events
@@ -264,6 +265,8 @@ void LPNoteOn(byte channel, byte note, byte velocity)
       if (sequencerState == STATE_STOPPED) tracks[trackId]-> setPatternId(patternId);
       if (sequencerState == STATE_RUNNING) tracks[trackId]-> cuePatternId(patternId);
       updateSceneConfiguration(currentScene);
+      currentPattern = patternId;
+      currentTrack = trackId;
     }
     bool inSceneRange =  (velocity > 0 && note >= 11 && note <= 18); // in scene range
     if (inSceneRange)
@@ -325,17 +328,8 @@ void LPControlChange(byte channel, byte control, byte value)
         else setCurrentTrack(trackTemp);
         break;
       case CCstartStop:
-        // toggle sequencer state stopped/running
-        if (sequencerState == STATE_STOPPED)
-        {
-          startSequencer();
-          //LP1.setPadColor(CCstartStop, LP_GREEN);
-        }
-        else
-        {
-          stopSequencer();
-          //LP1.setPadColor(CCstartStop, LP_RED);
-        }
+        if (sequencerState == STATE_STOPPED) startSequencer();
+        else  stopSequencer();
         break;
       case CCscrollUp:
         LP1.setPadColor(CCscrollUp, LP_GREEN);
@@ -396,15 +390,3 @@ void LPControlChange(byte channel, byte control, byte value)
     }
   }
 }
-
-//void updateIndicator(uint8_t state)
-//{
-//  static bool lastIndicatorState = false;
-//  bool indicatorState = state && !lastIndicatorState;
-//  if (lastIndicatorState != indicatorState)
-//  {
-//    lastIndicatorState = indicatorState;
-//    if (indicatorState) LP1.setPadColor(CCindicator, LP_CYAN);
-//    else LP1.setPadColor(CCindicator, LP_OFF);
-//  }
-//}
