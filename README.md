@@ -23,3 +23,12 @@ Component list:
 - 8 buttons via an MPC23017 expander
 - Powered usb hub
 - Novation Launchpad Mini Mk3
+
+
+![prototype1](2.jpg)
+
+(prototype assembly)
+
+![cad](3.PNG)
+
+(parts for 3D print and milling in Onshape)
