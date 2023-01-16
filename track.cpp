@@ -174,8 +174,6 @@ void Track::_copyToPlayedBuffer(trackEvent event)
 
 void Track::_handleAutoNoteOff()
 {
-  // If events in played buffer have current tick >= event tick + event length, send note off
-  // change to:
   // if length == 0 send note off
   // otherwise length = length - 1 tick * prescaler
   for (uint8_t index = 0; index < NR_PLAYED_EVENTS; index++)
@@ -184,11 +182,9 @@ void Track::_handleAutoNoteOff()
     {
       if(_noteOff_cb) _noteOff_cb(_midiChannel,_playedEvents[index].noteValue, 0);
       _playedEvents[index] = empty_trackEvent;
-      //printPlayedArray();
     }
     else if (_playedEvents[index].header == EVENT_MIDI_PLAYED)
     {
-      //_playedEvents[index].noteLength = _playedEvents[index].noteLength - 1;
       _playedEvents[index].noteLength = _playedEvents[index].noteLength - _tickFlag;
     }
   }
@@ -196,7 +192,6 @@ void Track::_handleAutoNoteOff()
 
 void Track::flushPlayedBuffer()
 {
-  //printPlayedArray();
   for (uint8_t index = 0; index < NR_PLAYED_EVENTS; index++)
   {
     if(_playedEvents[index].header == EVENT_MIDI_PLAYED)
@@ -205,7 +200,6 @@ void Track::flushPlayedBuffer()
       _playedEvents[index] = empty_trackEvent;
     }
   }
-  //printPlayedArray();
 }
 
 uint16_t Track::getCurrentTrackTick() { return _currentTrackTick;}
@@ -232,7 +226,6 @@ void Track::_updateCuedEventIndex()
 
 void Track::addEvent(uint16_t tick, uint8_t noteValue, uint8_t noteVelocity, uint8_t noteLength, bool audit)
 {
-  
   if (_nextFreeEventId < _nrEvents)
   {
     _patterns[_currentPattern].trackEvents[_nextFreeEventId].header = EVENT_MIDI_SLEEPING;
@@ -245,15 +238,13 @@ void Track::addEvent(uint16_t tick, uint8_t noteValue, uint8_t noteVelocity, uin
   if (tick < _currentTrackTick) _updateCuedEventIndex();
   _compactEventArray();
   _patterns[_currentPattern].patternStatus = PATTERN_FILLED;
-  //printEventArray(16);
-
 }
 
 void Track::_auditEvent(trackEvent auditEvent)
 {
   // shall ONLY be called if sequencer is not running!
   if(_noteOn_cb && (auditEvent.noteValue + transpose < 128)) _noteOn_cb(_midiChannel, auditEvent.noteValue + transpose, auditEvent.noteVelocity);
-  delay(50);
+  delay(50); // crude
   if(_noteOff_cb) _noteOff_cb(_midiChannel, auditEvent.noteValue + transpose, auditEvent.noteVelocity);
 }
 
@@ -266,7 +257,7 @@ void Track::removeEvents(uint16_t tickStart, uint16_t tickEnd, uint8_t noteValue
     {
       if(_patterns[_currentPattern].trackEvents[index].tick < _currentTrackTick)
       {
-        // removed event before current time, reduce cued index ??
+        // removed event before current time, reduce cued index
         _cuedEventIndex = _cuedEventIndex - 1;
       }
       _patterns[_currentPattern].trackEvents[index] = empty_trackEvent;

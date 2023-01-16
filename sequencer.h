@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include "track.h"
 #include "midiFunctions.h"
+#include "audioFunctions.h"
 
 #define STATE_STOPPED 0
 #define STATE_RUNNING 1

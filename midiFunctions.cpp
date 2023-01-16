@@ -146,14 +146,14 @@ void deviceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
   usbMIDI.sendNoteOff(note, 127, channel);
 }
 
-void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
-{ 
-  //Voices[channel].noteOn(note, velocity);
-}
-void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
-{
-  //Voices[channel].noteOff(note, velocity);
-}
+//void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
+//{ 
+//  //Voices[channel].noteOn(note, velocity);
+//}
+//void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
+//{
+//  //Voices[channel].noteOff(note, velocity);
+//}
 
 void serialMidiNoteOn(uint8_t channel, uint8_t noteValue, uint8_t velocity) { MIDI.sendNoteOn(noteValue, 127, channel); }
 void serialMidiNoteOff(uint8_t channel, uint8_t noteValue, uint8_t velocity) { MIDI.sendNoteOff(noteValue, 127, channel); }

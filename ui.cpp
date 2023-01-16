@@ -151,8 +151,8 @@ void updateHeader(bool firstCall)
   
   if (keyVariableChange[KEY_VAR_TRACK_NR])
   {
-    tft.fillRect(HEADER_TEXT_X  + 1 * HEADER_OFFSET_X - 2, 2, 16, HEADER_HEIGHT - 4, lpColor2tftColor(tracks[currentTrack]->color));
-    tft.setCursor(HEADER_TEXT_X  + 1 * HEADER_OFFSET_X, 3);
+    tft.fillRect(HEADER_TEXT_X  + 1 * HEADER_OFFSET_X + 2, 2, 16, HEADER_HEIGHT - 4, lpColor2tftColor(tracks[currentTrack]->color));
+    tft.setCursor(HEADER_TEXT_X  + 1 * HEADER_OFFSET_X + 4, 3);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
     tft.print(keyVariableValue[KEY_VAR_TRACK_NR]);
@@ -160,8 +160,8 @@ void updateHeader(bool firstCall)
   
   if (keyVariableChange[KEY_VAR_PATTERN_NR])
   {
-    tft.fillRect(HEADER_TEXT_X  + 3 * HEADER_OFFSET_X, 0, HEADER_OFFSET_X, HEADER_HEIGHT, ILI9341_LIGHTGREY);
-    tft.setCursor(HEADER_TEXT_X + 3* HEADER_OFFSET_X, 3);
+    tft.fillRect(HEADER_TEXT_X  + 3 * HEADER_OFFSET_X + 4, 0, HEADER_OFFSET_X - 8, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X + 3* HEADER_OFFSET_X + 4, 3);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
     tft.printf("%02d", keyVariableValue[KEY_VAR_PATTERN_NR]);
@@ -169,8 +169,8 @@ void updateHeader(bool firstCall)
 
   if (oldBpm != SequencerData.bpm)
   {
-    tft.fillRect(HEADER_TEXT_X  + 5 * HEADER_OFFSET_X, 0, HEADER_OFFSET_X, HEADER_HEIGHT, ILI9341_LIGHTGREY);
-    tft.setCursor(HEADER_TEXT_X  + 5 * HEADER_OFFSET_X, 3);
+    tft.fillRect(HEADER_TEXT_X  + 5 * HEADER_OFFSET_X + 4, 0, HEADER_OFFSET_X, HEADER_HEIGHT, ILI9341_LIGHTGREY);
+    tft.setCursor(HEADER_TEXT_X  + 5 * HEADER_OFFSET_X + 4, 3);
     tft.setFont(Arial_14);
     tft.setTextColor(ILI9341_BLACK);
     tft.printf("%03d", SequencerData.bpm);
@@ -490,11 +490,12 @@ void displaySongPage2(bool firstCall)
 {
   static uint8_t patternLengths[NR_TRACKS];
   static uint8_t patternColumnPositions[NR_TRACKS];
+  static bool lastBoxResetStatus[NR_TRACKS];
   const uint16_t boxXpos = 8;
   const uint16_t firstBoxYpos = PAGEINDICATOR_HEIGHT + 10;
   const uint16_t boxYpadding = 2;
   const uint16_t boxHeight = 20;
-  const uint16_t boxColumnWidthPixels = 2;
+  const uint16_t boxColumnWidthPixels = 2; // maybe normalize using longest pattern?
   
   if (firstCall) clearMainArea();
 
@@ -504,8 +505,8 @@ void displaySongPage2(bool firstCall)
     uint8_t patternColumnPosition = tracks[trackId]->getCurrentColumn(TICKS_PER_COLUMN);
     uint16_t color = lpColor2tftColor(tracks[trackId]->color);
     uint8_t row = 6 - trackId;
-     
-    if (patternLength != patternLengths[trackId] || patternColumnPosition == 0)
+
+    if (patternLength != patternLengths[trackId] || ((patternColumnPosition == 0) && (patternColumnPositions[trackId] != 0 )) )
     {
       patternLengths[trackId] = patternLength;
       tft.fillRect(boxXpos - 1, firstBoxYpos + row * (boxHeight + boxYpadding), patternLength * boxColumnWidthPixels + 2, boxHeight , ILI9341_DARKGREY);
