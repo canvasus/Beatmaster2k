@@ -60,12 +60,17 @@ AudioConnection          patchCord29(finalMixL, 0, i2s1, 0);
 AudioConnection          patchCord30(finalMixR, 0, i2s1, 1);
 
 
-String sampleNames[NR_SAMPLES] = {"Bd Linn", "Sd Linn", "Hh Mpc60"};
+String sampleNames[NR_SAMPLES] = {"Bd Linn", "Sd Linn", "Hh Mpc60", "Ho Mpc60", "T0 Linn", "T1 Linn", "T2 Linn", "T3 Linn"};
 
 const unsigned int *  samples[NR_SAMPLES] = {
                                              AudioSampleBd_linn,
                                              AudioSampleSd_linn,
                                              AudioSampleHh_rytmmpc60_2,
+                                             AudioSampleHho_rytmmpc60_3,
+                                             AudioSampleToml_linn,
+                                             AudioSampleTom_linn,
+                                             AudioSampleTomh_linn,
+                                             AudioSampleTomhh_linn
                                              };
 
 drumKitParameters DrumKitParameters;
@@ -85,6 +90,11 @@ void setupAudio()
   reverb.lodamp(DrumKitParameters.reverb_lodamp);
   reverb.lowpass(DrumKitParameters.reverb_lowpass);
   reverb.diffusion(DrumKitParameters.reverb_diffusion);
+
+  for (uint8_t playerId = 0; playerId < NR_PLAYERS - 1; playerId++)
+  {
+    setPlayerMix(playerId);
+  }
 
   finalMixL.gain(0, DrumKitParameters.mainOut_dry);
   finalMixR.gain(0, DrumKitParameters.mainOut_dry);
@@ -106,6 +116,7 @@ void voiceNoteOn(uint8_t channel, uint8_t note, uint8_t velocity)
 { 
   uint8_t playerId = constrain(note, 0, NR_PLAYERS - 1);
   uint8_t sampleId = DrumKitParameters.sampleId[playerId];
+  if (DrumKitParameters.choke[playerId] > -1) player[DrumKitParameters.choke[playerId]].stop();
   player[playerId].play(samples[sampleId]);
 }
 
@@ -116,10 +127,33 @@ void voiceNoteOff(uint8_t channel, uint8_t note, uint8_t velocity)
 
 void setPlayerLevel(uint8_t playerId, float level)
 {
-  
+  DrumKitParameters.level[playerId] = level;
+  setPlayerMix(playerId);
 }
 
 void setPlayerPanning(uint8_t playerId, float pan)
 {
-  
+  DrumKitParameters.pan[playerId] = (int)pan;
+  setPlayerMix(playerId);
+}
+
+void setPlayerMix(uint8_t playerId)
+{
+  float level = DrumKitParameters.level[playerId];
+  float pan = DrumKitParameters.pan[playerId];
+  float levelR = level;
+  float levelL = level;
+  if (pan > 0) levelL = level * (1.0 - pan / 64.0);
+  if (pan < 0) levelR = level * (1.0 - pan / 64.0);
+
+  if (playerId < 4)
+  {
+    playerMixL1.gain(playerId, levelL);
+    playerMixR1.gain(playerId, levelR);
+  }
+  else
+  {
+    playerMixL2.gain(playerId - 4, levelL);
+    playerMixR2.gain(playerId - 4, levelR);
+  }
 }
